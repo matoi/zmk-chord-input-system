@@ -1,0 +1,156 @@
+/*
+ * Copyright (c) 2026 The ZMK Contributors
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * zmk-chord-input-system: Naginata-style (薙刀式) behavior instances (v15 fix).
+ *
+ * Shift structure:
+ *   SHIFT_0 = center shift (Space, both thumbs)
+ *
+ * Dakuten (F/J) and handakuten (B/M) are regular character keys with
+ * KANA_DAKUTEN / KANA_HANDAKUTEN combo markers. Voicing is handled
+ * entirely through the combo system, not grid shifts. This allows
+ * F/J/B/M to have full multi-face kana output (including center shift).
+ *
+ * Character combos are included automatically:
+ *   - char-combos-youon.dtsi: yōon (き+や→きゃ etc.)
+ *   - char-combos-dakuten.dtsi: dakuten/handakuten (し+F→じ etc.)
+ *
+ * Usage:
+ *   #include <behaviors/cdis-naginata.dtsi>
+ *
+ *   naginata_layer {
+ *       bindings = <
+ *           NC_NAGINATA_LT  NC_NAGINATA_RT
+ *           NC_NAGINATA_LM  NC_NAGINATA_RM
+ *           NC_NAGINATA_LB  NC_NAGINATA_RB
+ *           NC_NAGINATA_TL  NC_NAGINATA_TR
+ *       >;
+ *   };
+ *
+ * Limitations:
+ *   - T/Y are navigation keys (←/→) via NC_KEY, participating in passthrough.
+ */
+
+#include <dt-bindings/zmk/keys.h>
+#include <zmk-chordis/keys.h>
+#include <zmk-chordis/chord-input-map.h>
+#include <behaviors/char-combos-youon.dtsi>
+#include <behaviors/char-combos-dakuten.dtsi>
+#include <behaviors/char-combos-kogaki.dtsi>
+#include <zmk-chordis/helpers.h>
+
+/ {
+    cdis_config: cdis_config {
+        compatible = "zmk,chord-input-config";
+        timeout-ms = <100>;
+        sequential-threshold = <2>;
+        sequential-min-overlap-ms = <20>;
+    };
+
+    behaviors {
+        /*
+         * Naginata character keys.
+         * CHORD_INPUT_BEHAVIOR5(name, unshifted, center, unused, unused, unused)
+         *
+         * Dakuten/handakuten faces are no longer defined per-key.
+         * Voicing is handled by combo markers (KANA_DAKUTEN/KANA_HANDAKUTEN)
+         * on the F/J/B/M keys + the combo table in char-combos-dakuten.dtsi.
+         */
+
+        /* === Top row === */
+        /* Q */ CHORD_INPUT_BEHAVIOR5(ng_kogaki, KANA_KOGAKI, KANA_KOGAKI,   KANA_NONE, KANA_NONE, KANA_NONE)
+        /* W */ CHORD_INPUT_BEHAVIOR5(ng_ki,   KANA_KI,       KANA_ME,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* E */ CHORD_INPUT_BEHAVIOR5(ng_te,   KANA_TE,       KANA_RI,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* R */ CHORD_INPUT_BEHAVIOR5(ng_si,   KANA_SI,       KANA_NE,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* T */ CHORD_INPUT_BEHAVIOR5(ng_left, NC_KEY(LEFT),  NC_KEY(LEFT),  KANA_NONE, KANA_NONE, KANA_NONE)
+        /* Y */ CHORD_INPUT_BEHAVIOR5(ng_right,NC_KEY(RIGHT), NC_KEY(RIGHT), KANA_NONE, KANA_NONE, KANA_NONE)
+        /* U */ CHORD_INPUT_BEHAVIOR5(ng_bspc, NC_KEY(BSPC),  KANA_SA,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* I */ CHORD_INPUT_BEHAVIOR5(ng_ru,   KANA_RU,       KANA_YO,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* O */ CHORD_INPUT_BEHAVIOR5(ng_su,   KANA_SU,       KANA_E,        KANA_NONE, KANA_NONE, KANA_NONE)
+        /* P */ CHORD_INPUT_BEHAVIOR5(ng_he,   KANA_HE,       KANA_YU,       KANA_NONE, KANA_NONE, KANA_NONE)
+
+        /* === Home row === */
+        /* A */ CHORD_INPUT_BEHAVIOR5(ng_ro,   KANA_RO,       KANA_SE,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* S */ CHORD_INPUT_BEHAVIOR5(ng_ke,   KANA_KE,       KANA_MI,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* D */ CHORD_INPUT_BEHAVIOR5(ng_to,   KANA_TO,       KANA_NI,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* F */ CHORD_INPUT_BEHAVIOR5(ng_daku_l,  KANA_KA,    KANA_MA,       KANA_NONE, KANA_DAKUTEN, KANA_NONE)
+        /* G */ CHORD_INPUT_BEHAVIOR5(ng_xtu,  KANA_SMALL_TU, KANA_TI,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* H */ CHORD_INPUT_BEHAVIOR5(ng_ku,   KANA_KU,       KANA_YA,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* J */ CHORD_INPUT_BEHAVIOR5(ng_daku_r,  KANA_A,     KANA_NO,       KANA_NONE, KANA_DAKUTEN, KANA_NONE)
+        /* K */ CHORD_INPUT_BEHAVIOR5(ng_i,    KANA_I,        KANA_MO,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* L */ CHORD_INPUT_BEHAVIOR5(ng_u,    KANA_U,        KANA_TU,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* ; */ CHORD_INPUT_BEHAVIOR5(ng_chou, KANA_CHOUON,   KANA_HU,       KANA_NONE, KANA_NONE, KANA_NONE)
+
+        /* === Bottom row === */
+        /* Z */ CHORD_INPUT_BEHAVIOR5(ng_ho,   KANA_HO,       KANA_HO,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* X */ CHORD_INPUT_BEHAVIOR5(ng_hi,   KANA_HI,       KANA_HI,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* C */ CHORD_INPUT_BEHAVIOR5(ng_ha,   KANA_HA,       KANA_WO,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* V */ CHORD_INPUT_BEHAVIOR5(ng_ko,   KANA_KO,       KANA_TOUTEN,   KANA_NONE, KANA_NONE, KANA_NONE)
+        /* B */ CHORD_INPUT_BEHAVIOR5(ng_hdaku_l, KANA_SO,    KANA_NU,       KANA_NONE, KANA_NONE, KANA_HANDAKUTEN)
+        /* N */ CHORD_INPUT_BEHAVIOR5(ng_ta,   KANA_TA,       KANA_O,        KANA_NONE, KANA_NONE, KANA_NONE)
+        /* M */ CHORD_INPUT_BEHAVIOR5(ng_hdaku_r, KANA_NA,    KANA_KUTEN,    KANA_NONE, KANA_NONE, KANA_HANDAKUTEN)
+        /* , */ CHORD_INPUT_BEHAVIOR5(ng_nn,   KANA_NN,       KANA_MU,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* . */ CHORD_INPUT_BEHAVIOR5(ng_ra,   KANA_RA,       KANA_WA,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* / */ CHORD_INPUT_BEHAVIOR5(ng_re,   KANA_RE,       KANA_RE,       KANA_NONE, KANA_NONE, KANA_NONE)
+
+        /* === Center shift (Space, both thumbs) === */
+        cdis_thumb_l: cdis_thumb_l {
+            compatible = "zmk,behavior-chord-input-thumb";
+            #binding-cells = <1>;
+            side = "left";
+            bindings = <&kp>;
+        };
+        cdis_thumb_r: cdis_thumb_r {
+            compatible = "zmk,behavior-chord-input-thumb";
+            #binding-cells = <1>;
+            side = "left";  /* both thumbs = SHIFT_0 (center shift) */
+            bindings = <&kp>;
+        };
+
+        /* === Passthrough word (temporary ASCII mode) === */
+        cdis_pt_word: cdis_pt_word {
+            compatible = "zmk,behavior-chord-input-passthrough-word";
+            #binding-cells = <0>;
+            ime-keycode = <LANG2>;
+            ime-restore-keycode = <LANG1>;
+            continue-list = <UNDERSCORE BACKSPACE DELETE MINUS>;
+        };
+
+        /* === Mode toggle === */
+        cdis_on: cdis_on {
+            compatible = "zmk,behavior-chord-input-toggle";
+            #binding-cells = <1>;
+            toggle-action = "on";
+            ime-keycode = <LANG1>;
+        };
+        cdis_off: cdis_off {
+            compatible = "zmk,behavior-chord-input-toggle";
+            #binding-cells = <1>;
+            toggle-action = "off";
+            ime-keycode = <LANG2>;
+        };
+    };
+};
+
+/* === Naginata keymap layout macros === */
+
+/* Top row */
+#define NC_NAGINATA_LT  &cdis_ng_kogaki  &cdis_ng_ki    &cdis_ng_te  &cdis_ng_si  &cdis_ng_left
+#define NC_NAGINATA_RT  &cdis_ng_right   &cdis_ng_bspc  &cdis_ng_ru  &cdis_ng_su  &cdis_ng_he
+
+/* Home row */
+#define NC_NAGINATA_LM  &cdis_ng_ro  &cdis_ng_ke      &cdis_ng_to  &cdis_ng_daku_l  &cdis_ng_xtu
+#define NC_NAGINATA_RM  &cdis_ng_ku  &cdis_ng_daku_r  &cdis_ng_i   &cdis_ng_u       &cdis_ng_chou
+
+/* Bottom row */
+#define NC_NAGINATA_LB  &cdis_ng_ho  &cdis_ng_hi       &cdis_ng_ha  &cdis_ng_ko  &cdis_ng_hdaku_l
+#define NC_NAGINATA_RB  &cdis_ng_ta  &cdis_ng_hdaku_r  &cdis_ng_nn  &cdis_ng_ra  &cdis_ng_re
+
+/* Thumbs */
+#define NC_NAGINATA_LH  &cdis_thumb_l SPACE
+#define NC_NAGINATA_RH  &cdis_thumb_r SPACE
+
+/* Passthrough word (temporary ASCII mode) */
+#define NC_PT_WORD  &cdis_pt_word

@@ -1,0 +1,20 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: |
+  NICOLA Passthrough Behavior.
+  Wraps an arbitrary binding and adds modifier-aware passthrough:
+  when any modifier is held, returns TRANSPARENT to let the base
+  layer handle the key instead.
+
+compatible: "zmk,behavior-chord-input-passthrough"
+
+include: zero_param.yaml
+
+properties:
+  bindings:
+    type: phandle-array
+    required: true
+    description: |
+      The inner binding to invoke when no modifier is active.
+      Example: bindings = <&kp LCTRL>;

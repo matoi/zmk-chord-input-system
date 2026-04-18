@@ -1,0 +1,48 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: NICOLA Global Configuration
+
+compatible: "zmk,chord-input-config"
+
+properties:
+  timeout-ms:
+    type: int
+    default: 100
+    description: |
+      Simultaneous key press detection window in milliseconds.
+      NICOLA spec recommends 50-200ms, with 100ms as the typical default.
+  sequential-threshold:
+    type: int
+    default: 2
+    description: |
+      Coefficient n for sequential typing detection (spec 5.5.2).
+      If t1 > t2 * n, the input is judged as sequential (not simultaneous).
+  sequential-min-overlap-ms:
+    type: int
+    default: 20
+    description: |
+      Minimum overlap time (t2) in ms. If t2 is below this threshold,
+      the input is always judged as sequential regardless of t1.
+  auto-off-keys:
+    type: array
+    description: |
+      Array of (modifier_mask, encoded_keycode) pairs. When a modifier
+      key matching any pair is held and the corresponding character key
+      is pressed while NICOLA is active, NICOLA is automatically
+      deactivated (flush + layer off + LANG2).
+      Example for Emacs C-x, C-s, M-x:
+        auto-off-keys = <(MOD_LCTL|MOD_RCTL) X (MOD_LCTL|MOD_RCTL) S (MOD_LALT|MOD_RALT) X>;
+  passthrough-behaviors:
+    type: phandles
+    description: |
+      List of behavior devices whose "active" state triggers NICOLA
+      passthrough (keys fall through to the base layer instead of
+      producing kana). Intended for behaviors like &caps_word or
+      &shift_word that apply implicit modifiers which would corrupt
+      romaji output.
+      The referenced behavior's device data must have `bool active`
+      as its first struct field (matching caps_word / shift_word layout).
+      Example:
+        passthrough-behaviors = <&shift_word>;
+        passthrough-behaviors = <&caps_word &shift_word>;

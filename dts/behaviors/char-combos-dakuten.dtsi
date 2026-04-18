@@ -1,0 +1,81 @@
+/*
+ * Copyright (c) 2026 The ZMK Contributors
+ * SPDX-License-Identifier: MIT
+ *
+ * Dakuten (濁音) and handakuten (半濁音) combos.
+ * Used when dakuten/handakuten keys are behavior-nicola-char with
+ * KANA_DAKUTEN / KANA_HANDAKUTEN markers, instead of grid shift keys.
+ *
+ * Usage:
+ *   #include <behaviors/char-combos-dakuten.dtsi>
+ */
+
+#include <zmk-chordis/keys.h>
+
+/ {
+    /* === Dakuten (濁音): KANA_DAKUTEN + unvoiced → voiced === */
+
+    /* K-row */
+    cdis_combo_daku_ka: cdis_combo_daku_ka { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KA>; result = <KANA_GA>; };
+    cdis_combo_daku_ki: cdis_combo_daku_ki { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KI>; result = <KANA_GI>; };
+    cdis_combo_daku_ku: cdis_combo_daku_ku { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KU>; result = <KANA_GU>; };
+    cdis_combo_daku_ke: cdis_combo_daku_ke { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KE>; result = <KANA_GE>; };
+    cdis_combo_daku_ko: cdis_combo_daku_ko { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KO>; result = <KANA_GO>; };
+
+    /* S-row */
+    cdis_combo_daku_sa: cdis_combo_daku_sa { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SA>; result = <KANA_ZA>; };
+    cdis_combo_daku_si: cdis_combo_daku_si { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SI>; result = <KANA_ZI>; };
+    cdis_combo_daku_su: cdis_combo_daku_su { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SU>; result = <KANA_ZU>; };
+    cdis_combo_daku_se: cdis_combo_daku_se { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SE>; result = <KANA_ZE>; };
+    cdis_combo_daku_so: cdis_combo_daku_so { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SO>; result = <KANA_ZO>; };
+
+    /* T-row */
+    cdis_combo_daku_ta: cdis_combo_daku_ta { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TA>; result = <KANA_DA>; };
+    cdis_combo_daku_ti: cdis_combo_daku_ti { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TI>; result = <KANA_DI>; };
+    cdis_combo_daku_tu: cdis_combo_daku_tu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TU>; result = <KANA_DU>; };
+    cdis_combo_daku_te: cdis_combo_daku_te { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TE>; result = <KANA_DE>; };
+    cdis_combo_daku_to: cdis_combo_daku_to { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TO>; result = <KANA_DO>; };
+
+    /* H-row */
+    cdis_combo_daku_ha: cdis_combo_daku_ha { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HA>; result = <KANA_BA>; };
+    cdis_combo_daku_hi: cdis_combo_daku_hi { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HI>; result = <KANA_BI>; };
+    cdis_combo_daku_hu: cdis_combo_daku_hu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HU>; result = <KANA_BU>; };
+    cdis_combo_daku_he: cdis_combo_daku_he { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HE>; result = <KANA_BE>; };
+    cdis_combo_daku_ho: cdis_combo_daku_ho { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HO>; result = <KANA_BO>; };
+
+    /* U → vu */
+    cdis_combo_daku_u: cdis_combo_daku_u { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_U>; result = <KANA_VU>; };
+
+    /* === Handakuten (半濁音): KANA_HANDAKUTEN + H-row → P-row === */
+
+    cdis_combo_hdaku_ha: cdis_combo_hdaku_ha { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HA>; result = <KANA_PA>; };
+    cdis_combo_hdaku_hi: cdis_combo_hdaku_hi { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HI>; result = <KANA_PI>; };
+    cdis_combo_hdaku_hu: cdis_combo_hdaku_hu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HU>; result = <KANA_PU>; };
+    cdis_combo_hdaku_he: cdis_combo_hdaku_he { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HE>; result = <KANA_PE>; };
+    cdis_combo_hdaku_ho: cdis_combo_hdaku_ho { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HO>; result = <KANA_PO>; };
+
+    /* === Dakuten + yōon (濁音拗音): for 3-key chained combos (e.g. し+濁+る → じょ) === */
+
+    /* G-row yōon */
+    cdis_combo_daku_kya: cdis_combo_daku_kya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KYA>; result = <KANA_GYA>; };
+    cdis_combo_daku_kyu: cdis_combo_daku_kyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KYU>; result = <KANA_GYU>; };
+    cdis_combo_daku_kyo: cdis_combo_daku_kyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_KYO>; result = <KANA_GYO>; };
+    /* Z-row yōon */
+    cdis_combo_daku_sya: cdis_combo_daku_sya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SYA>; result = <KANA_ZYA>; };
+    cdis_combo_daku_syu: cdis_combo_daku_syu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SYU>; result = <KANA_ZYU>; };
+    cdis_combo_daku_syo: cdis_combo_daku_syo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_SYO>; result = <KANA_ZYO>; };
+    /* D-row yōon */
+    cdis_combo_daku_tya: cdis_combo_daku_tya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TYA>; result = <KANA_DYA>; };
+    cdis_combo_daku_tyu: cdis_combo_daku_tyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TYU>; result = <KANA_DYU>; };
+    cdis_combo_daku_tyo: cdis_combo_daku_tyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_TYO>; result = <KANA_DYO>; };
+    /* B-row yōon */
+    cdis_combo_daku_hya: cdis_combo_daku_hya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HYA>; result = <KANA_BYA>; };
+    cdis_combo_daku_hyu: cdis_combo_daku_hyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HYU>; result = <KANA_BYU>; };
+    cdis_combo_daku_hyo: cdis_combo_daku_hyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_DAKUTEN>; kana-b = <KANA_HYO>; result = <KANA_BYO>; };
+
+    /* === Handakuten + yōon (半濁音拗音): P-row === */
+
+    cdis_combo_hdaku_hya: cdis_combo_hdaku_hya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HYA>; result = <KANA_PYA>; };
+    cdis_combo_hdaku_hyu: cdis_combo_hdaku_hyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HYU>; result = <KANA_PYU>; };
+    cdis_combo_hdaku_hyo: cdis_combo_hdaku_hyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HANDAKUTEN>; kana-b = <KANA_HYO>; result = <KANA_PYO>; };
+};

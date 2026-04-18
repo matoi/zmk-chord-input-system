@@ -1,0 +1,34 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: |
+  NICOLA character-character combo definition.
+  When two character keys with the specified kana IDs are pressed
+  simultaneously (within the CHAR_WAIT detection window), the result
+  kana is output instead. Combos are bidirectional (order does not matter).
+
+  Used for naginata-style yōon input (e.g. き+や → きゃ).
+
+  Example:
+    cdis_combo_kya: cdis_combo_kya {
+        compatible = "zmk,chord-input-char-combo";
+        kana-a = <KANA_KI>;
+        kana-b = <KANA_YA>;
+        result = <KANA_KYA>;
+    };
+
+compatible: "zmk,chord-input-char-combo"
+
+properties:
+  kana-a:
+    type: int
+    required: true
+    description: First kana ID of the combo pair
+  kana-b:
+    type: int
+    required: true
+    description: Second kana ID of the combo pair
+  result:
+    type: int
+    required: true
+    description: Output kana ID when both keys are pressed simultaneously

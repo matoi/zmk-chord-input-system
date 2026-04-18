@@ -1,0 +1,22 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: NICOLA Mode Toggle Behavior (idempotent layer + IME switch)
+
+compatible: "zmk,behavior-chord-input-toggle"
+
+include: one_param.yaml
+
+properties:
+  toggle-action:
+    type: string
+    required: true
+    enum:
+      - "on"
+      - "off"
+    description: Whether this toggles NICOLA mode on or off.
+  ime-keycode:
+    type: int
+    required: true
+    description: |
+      HID keycode to send for IME switching (LANG1 for kana, LANG2 for alphanumeric).

@@ -1,0 +1,17 @@
+config ZMK_BEHAVIOR_CHORDIS
+    bool
+    default y
+    depends on DT_HAS_ZMK_BEHAVIOR_CHORD_INPUT_ENABLED
+
+config ZMK_BEHAVIOR_CHORDIS_PASSTHROUGH_WORD
+    bool
+    default y
+    depends on DT_HAS_ZMK_BEHAVIOR_CHORD_INPUT_PASSTHROUGH_WORD_ENABLED
+
+config ZMK_CHORDIS_MAX_CHAR_COMBOS
+    int "Maximum number of character-character combos"
+    default 80
+    help
+      Maximum number of character-character combo entries
+      (e.g. き+や → きゃ for naginata-style yōon input).
+      Each entry takes 12 bytes of RAM.

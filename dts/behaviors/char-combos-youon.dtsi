@@ -1,0 +1,71 @@
+/*
+ * Copyright (c) 2026 The ZMK Contributors
+ * SPDX-License-Identifier: MIT
+ *
+ * Pre-defined character combos for yōon (拗音) generation.
+ * Include this file to enable naginata-style yōon input where
+ * pressing a consonant kana + や/ゆ/よ simultaneously produces
+ * the corresponding yōon (e.g. き+や → きゃ).
+ *
+ * Usage in keymap:
+ *   #include <behaviors/char-combos-youon.dtsi>
+ */
+
+#include <zmk-chordis/keys.h>
+
+/ {
+    /* K-row yōon: き + や/ゆ/よ */
+    cdis_combo_kya: cdis_combo_kya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KI>; kana-b = <KANA_YA>; result = <KANA_KYA>; };
+    cdis_combo_kyu: cdis_combo_kyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KI>; kana-b = <KANA_YU>; result = <KANA_KYU>; };
+    cdis_combo_kyo: cdis_combo_kyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KI>; kana-b = <KANA_YO>; result = <KANA_KYO>; };
+
+    /* S-row yōon: し + や/ゆ/よ */
+    cdis_combo_sya: cdis_combo_sya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_SI>; kana-b = <KANA_YA>; result = <KANA_SYA>; };
+    cdis_combo_syu: cdis_combo_syu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_SI>; kana-b = <KANA_YU>; result = <KANA_SYU>; };
+    cdis_combo_syo: cdis_combo_syo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_SI>; kana-b = <KANA_YO>; result = <KANA_SYO>; };
+
+    /* T-row yōon: ち + や/ゆ/よ */
+    cdis_combo_tya: cdis_combo_tya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_TI>; kana-b = <KANA_YA>; result = <KANA_TYA>; };
+    cdis_combo_tyu: cdis_combo_tyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_TI>; kana-b = <KANA_YU>; result = <KANA_TYU>; };
+    cdis_combo_tyo: cdis_combo_tyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_TI>; kana-b = <KANA_YO>; result = <KANA_TYO>; };
+
+    /* N-row yōon: に + や/ゆ/よ */
+    cdis_combo_nya: cdis_combo_nya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_NI>; kana-b = <KANA_YA>; result = <KANA_NYA>; };
+    cdis_combo_nyu: cdis_combo_nyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_NI>; kana-b = <KANA_YU>; result = <KANA_NYU>; };
+    cdis_combo_nyo: cdis_combo_nyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_NI>; kana-b = <KANA_YO>; result = <KANA_NYO>; };
+
+    /* H-row yōon: ひ + や/ゆ/よ */
+    cdis_combo_hya: cdis_combo_hya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HI>; kana-b = <KANA_YA>; result = <KANA_HYA>; };
+    cdis_combo_hyu: cdis_combo_hyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HI>; kana-b = <KANA_YU>; result = <KANA_HYU>; };
+    cdis_combo_hyo: cdis_combo_hyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_HI>; kana-b = <KANA_YO>; result = <KANA_HYO>; };
+
+    /* M-row yōon: み + や/ゆ/よ */
+    cdis_combo_mya: cdis_combo_mya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_MI>; kana-b = <KANA_YA>; result = <KANA_MYA>; };
+    cdis_combo_myu: cdis_combo_myu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_MI>; kana-b = <KANA_YU>; result = <KANA_MYU>; };
+    cdis_combo_myo: cdis_combo_myo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_MI>; kana-b = <KANA_YO>; result = <KANA_MYO>; };
+
+    /* R-row yōon: り + や/ゆ/よ */
+    cdis_combo_rya: cdis_combo_rya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_RI>; kana-b = <KANA_YA>; result = <KANA_RYA>; };
+    cdis_combo_ryu: cdis_combo_ryu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_RI>; kana-b = <KANA_YU>; result = <KANA_RYU>; };
+    cdis_combo_ryo: cdis_combo_ryo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_RI>; kana-b = <KANA_YO>; result = <KANA_RYO>; };
+
+    /* Voiced G-row yōon: ぎ + や/ゆ/よ */
+    cdis_combo_gya: cdis_combo_gya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_GI>; kana-b = <KANA_YA>; result = <KANA_GYA>; };
+    cdis_combo_gyu: cdis_combo_gyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_GI>; kana-b = <KANA_YU>; result = <KANA_GYU>; };
+    cdis_combo_gyo: cdis_combo_gyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_GI>; kana-b = <KANA_YO>; result = <KANA_GYO>; };
+
+    /* Voiced Z-row yōon: じ + や/ゆ/よ */
+    cdis_combo_zya: cdis_combo_zya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_ZI>; kana-b = <KANA_YA>; result = <KANA_ZYA>; };
+    cdis_combo_zyu: cdis_combo_zyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_ZI>; kana-b = <KANA_YU>; result = <KANA_ZYU>; };
+    cdis_combo_zyo: cdis_combo_zyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_ZI>; kana-b = <KANA_YO>; result = <KANA_ZYO>; };
+
+    /* Voiced B-row yōon: び + や/ゆ/よ */
+    cdis_combo_bya: cdis_combo_bya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_BI>; kana-b = <KANA_YA>; result = <KANA_BYA>; };
+    cdis_combo_byu: cdis_combo_byu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_BI>; kana-b = <KANA_YU>; result = <KANA_BYU>; };
+    cdis_combo_byo: cdis_combo_byo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_BI>; kana-b = <KANA_YO>; result = <KANA_BYO>; };
+
+    /* Semi-voiced P-row yōon: ぴ + や/ゆ/よ */
+    cdis_combo_pya: cdis_combo_pya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_PI>; kana-b = <KANA_YA>; result = <KANA_PYA>; };
+    cdis_combo_pyu: cdis_combo_pyu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_PI>; kana-b = <KANA_YU>; result = <KANA_PYU>; };
+    cdis_combo_pyo: cdis_combo_pyo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_PI>; kana-b = <KANA_YO>; result = <KANA_PYO>; };
+};

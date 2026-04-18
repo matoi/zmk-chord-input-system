@@ -1,0 +1,28 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: NICOLA Thumb Key Behavior
+
+compatible: "zmk,behavior-chord-input-thumb"
+
+include: one_param.yaml
+
+properties:
+  side:
+    type: string
+    required: true
+    enum:
+      - "left"
+      - "right"
+      - "shift2"
+      - "shift3"
+    description: |
+      Which shift type this key provides.
+      "left"/"right" are the traditional NICOLA thumb shifts (shift 0/1).
+      "shift2"/"shift3" are additional shifts for grid-based shift keys.
+  bindings:
+    type: phandles
+    required: true
+    description: |
+      Behavior to invoke on thumb tap (e.g., <&kp>).
+      The param1 binding cell from the keymap provides the parameter.

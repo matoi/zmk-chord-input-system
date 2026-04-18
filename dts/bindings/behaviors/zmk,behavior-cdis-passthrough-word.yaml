@@ -1,0 +1,41 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: |
+  NICOLA Passthrough Word Behavior.
+  Temporarily enables ASCII passthrough on the NICOLA layer.
+  On activation, taps the ime-keycode (default: LANG2) to switch the
+  IME to alphabet input mode during an active composition.
+  While active, NICOLA keys fall through to the base layer.
+  Deactivates on any key not in the continuation set (alpha, numeric,
+  modifiers, or the configurable continue-list).
+
+compatible: "zmk,behavior-chord-input-passthrough-word"
+
+include: zero_param.yaml
+
+properties:
+  ime-keycode:
+    type: int
+    required: false
+    description: |
+      ZMK keycode to tap on activation to switch the IME to alphabet
+      input mode. Set to 0 to disable. Default: LANG2 (japanese_eisuu).
+  ime-restore-keycode:
+    type: int
+    required: false
+    description: |
+      ZMK keycode to tap on deactivation to restore the IME to kana
+      input mode. Set to 0 to disable. Default: LANG1 (japanese_kana).
+  strict-modifiers:
+    type: boolean
+    description: |
+      When explicit modifiers are held, alphabetic and numeric keys bypass
+      built-in continuation and are checked against the continue-list instead.
+  continue-list:
+    type: array
+    required: true
+    description: |
+      Key codes that should not deactivate passthrough-word mode.
+      Alpha (A-Z), numeric (0-9), and modifier keys always continue.
+      Example: continue-list = <UNDERSCORE BACKSPACE DELETE MINUS>;

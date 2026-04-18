@@ -1,0 +1,33 @@
+/*
+ * Copyright (c) 2026 The ZMK Contributors
+ * SPDX-License-Identifier: MIT
+ *
+ * Kogaki (小書き) combos.
+ * Simultaneous press of the kogaki marker key (KANA_KOGAKI) with a
+ * kana key produces the corresponding small kana.
+ *
+ * Usage:
+ *   #include <behaviors/char-combos-kogaki.dtsi>
+ */
+
+#include <zmk-chordis/keys.h>
+
+/ {
+    /* Vowels */
+    cdis_combo_kogaki_a:  cdis_combo_kogaki_a  { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_A>;  result = <KANA_SMALL_A>; };
+    cdis_combo_kogaki_i:  cdis_combo_kogaki_i  { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_I>;  result = <KANA_SMALL_I>; };
+    cdis_combo_kogaki_u:  cdis_combo_kogaki_u  { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_U>;  result = <KANA_SMALL_U>; };
+    cdis_combo_kogaki_e:  cdis_combo_kogaki_e  { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_E>;  result = <KANA_SMALL_E>; };
+    cdis_combo_kogaki_o:  cdis_combo_kogaki_o  { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_O>;  result = <KANA_SMALL_O>; };
+
+    /* Y-row */
+    cdis_combo_kogaki_ya: cdis_combo_kogaki_ya { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_YA>; result = <KANA_SMALL_YA>; };
+    cdis_combo_kogaki_yu: cdis_combo_kogaki_yu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_YU>; result = <KANA_SMALL_YU>; };
+    cdis_combo_kogaki_yo: cdis_combo_kogaki_yo { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_YO>; result = <KANA_SMALL_YO>; };
+
+    /* っ */
+    cdis_combo_kogaki_tu: cdis_combo_kogaki_tu { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_TU>; result = <KANA_SMALL_TU>; };
+
+    /* ゎ */
+    cdis_combo_kogaki_wa: cdis_combo_kogaki_wa { compatible = "zmk,chord-input-char-combo"; kana-a = <KANA_KOGAKI>; kana-b = <KANA_WA>; result = <KANA_SMALL_WA>; };
+};

@@ -1,0 +1,53 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+description: NICOLA Character Key Behavior
+
+compatible: "zmk,behavior-chord-input"
+
+include: zero_param.yaml
+
+properties:
+  kana:
+    type: array
+    required: true
+    description: |
+      Array of kana codes: <unshifted shift0 shift1 [shift2] [shift3]>.
+      Minimum 3 elements (NICOLA compat), maximum 5 (with extra shifts).
+      Unused trailing shifts default to KANA_NONE.
+  hold-behavior:
+    type: phandle
+    description: |
+      Optional behavior to invoke when this key is held past tapping-term-ms
+      (e.g. <&kp> for a modifier). Engine integrates hold-tap natively rather
+      than wrapping the key in &mt, to allow combo detection.
+  hold-param:
+    type: int
+    description: |
+      Parameter passed to hold-behavior (e.g. LSHFT). Required if
+      hold-behavior is set.
+  tapping-term-ms:
+    type: int
+    default: 200
+    description: |
+      Time in ms before a held key resolves to its hold action. Only used
+      when hold-behavior is set.
+  quick-tap-ms:
+    type: int
+    default: 0
+    description: |
+      Time in ms within which a repeated press forces tap (repeat-typing
+      protection). Only used when hold-behavior is set.
+  hold-required-key-positions:
+    type: array
+    required: false
+    default: []
+    description: |
+      Optional list of key positions that may act as hold partners. Stricter
+      than ZMK's standard hold-trigger-key-positions: HOLD only activates if
+      the FIRST non-self key pressed during the undecided window is one of
+      these positions. Any other partner forces tap immediately, even if the
+      tapping-term elapses. Holding the key alone (no partner) still resolves
+      to HOLD on tapping-term as usual. Empty list (default) disables the
+      restriction entirely (any partner permits HOLD). Renamed from
+      hold-trigger-key-positions to avoid confusion with ZMK's looser semantics.
