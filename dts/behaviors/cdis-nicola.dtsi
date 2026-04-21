@@ -11,7 +11,12 @@
  *   #define LY_CDIS 1
  *   ...
  *   chord_input_layer {
- *       bindings = <&cdis_u &cdis_si ... &cdis_thumb_l SPACE &cdis_thumb_r SPACE>;
+ *       bindings = <
+ *           CDIS_NICOLA_LT  CDIS_NICOLA_RT
+ *           CDIS_NICOLA_LM  CDIS_NICOLA_RM
+ *           CDIS_NICOLA_LB  CDIS_NICOLA_RB
+ *                          CDIS_NICOLA_LH  CDIS_NICOLA_RH
+ *       >;
  *   };
  */
 
@@ -39,11 +44,19 @@
 
     behaviors {
         /*
-         * Character keys (30 instances)
+         * Character keys (31 positions including D12)
          * CHORD_INPUT_BEHAVIOR(name, unshifted, left_shifted, right_shifted)
          *
          * Layout reference: NICOLA spec figures 1-2, with 2018.11 errata applied.
          * Left column = same-side shift, right column = cross shift (and vice versa).
+         *
+         * D12 (standalone dakuten / handakuten key) is part of the layout
+         * definition here so the preset matches the standard arrangement even
+         * on keyboards that do not physically have that position.
+         *
+         * Note: the current romaji backend does not emit standalone ゛ / ゜
+         * cleanly in the same way it emits ordinary kana, so this key is
+         * included as a semantic layout definition first.
          */
 
         /* === D段 (top row) === */
@@ -58,6 +71,7 @@
         /* D09 */ CHORD_INPUT_BEHAVIOR(tu,     KANA_TU,       KANA_DU,       KANA_MA)
         /* D10 */ CHORD_INPUT_BEHAVIOR(comma,  KANA_COMMA,    KANA_PI,       KANA_SMALL_E)
         /* D11 */ CHORD_INPUT_BEHAVIOR(touten, KANA_TOUTEN,   KANA_NONE,     KANA_NONE)
+        /* D12 */ CHORD_INPUT_BEHAVIOR(dakuten, KANA_DAKUTEN, KANA_HANDAKUTEN, KANA_HANDAKUTEN)
 
         /* === C段 (home row) === */
         /* C01 */ CHORD_INPUT_BEHAVIOR(u,      KANA_U,        KANA_WO,       KANA_VU)
@@ -137,3 +151,27 @@
         };
     };
 };
+
+/* === NICOLA standard keymap layout macros === */
+
+/* Top row */
+#define CDIS_NICOLA_LT \
+    &cdis_kuten &cdis_ka &cdis_ta &cdis_ko &cdis_sa
+#define CDIS_NICOLA_RT \
+    &cdis_ra &cdis_ti &cdis_ku &cdis_tu &cdis_comma &cdis_touten &cdis_dakuten
+
+/* Home row */
+#define CDIS_NICOLA_LM \
+    &cdis_u &cdis_si &cdis_te &cdis_ke &cdis_se
+#define CDIS_NICOLA_RM \
+    &cdis_ha &cdis_to &cdis_ki &cdis_i &cdis_nn
+
+/* Bottom row */
+#define CDIS_NICOLA_LB \
+    &cdis_period &cdis_hi &cdis_su &cdis_hu &cdis_he
+#define CDIS_NICOLA_RB \
+    &cdis_me &cdis_so &cdis_ne &cdis_ho &cdis_nakaguro
+
+/* Thumbs */
+#define CDIS_NICOLA_LH  &cdis_thumb_l SPACE
+#define CDIS_NICOLA_RH  &cdis_thumb_r SPACE

@@ -1,32 +1,34 @@
 # Reference
 
-This document collects the detailed usage and customization options that were intentionally removed from `README.md`.
-Examples use plain DTS and plain ZMK-style keymap snippets.
+この文書は、`README.md` から意図的に外した詳細な使い方とカスタマイズ項目をまとめたもの。
+例はプレーンな DTS と、プレーンな ZMK 風 keymap snippet で書いている。
 
-## Preset Includes
+English version: [reference.en.md](reference.en.md)
 
-Available preset includes:
+## プリセット Include
+
+利用できるプリセット include:
 
 - `#include <behaviors/cdis-naginata.dtsi>`
 - `#include <behaviors/cdis-nicola.dtsi>`
 
-`cdis-naginata.dtsi` includes built-in combo tables for yoon, dakuten, handakuten, and kogaki.
-`cdis-nicola.dtsi` provides the standard NICOLA character and thumb behaviors.
+`cdis-naginata.dtsi` には、拗音、濁音、半濁音、小書き用の built-in combo table が含まれる。
+`cdis-nicola.dtsi` は、標準 NICOLA の文字 behavior と thumb behavior を提供する。
 
-## Core Behaviors
+## 基本 Behavior
 
-Common behavior names:
+よく使う behavior 名:
 
-- `&cdis_on`: turn a chord input layer on and tap the configured IME-on key
-- `&cdis_off`: turn a chord input layer off and tap the configured IME-off key
-- `&cdis_thumb_l`, `&cdis_thumb_r`: thumb-shift behaviors
-- `&cdis_*`: character behaviors defined by a preset or by your own `CHORD_INPUT_BEHAVIOR*` macro
-- `&cdis_pt_word`: temporary ASCII passthrough mode when provided by the preset
+- `&cdis_on`: chord input layer を ON にし、設定された IME-on key を tap する
+- `&cdis_off`: chord input layer を OFF にし、設定された IME-off key を tap する
+- `&cdis_thumb_l`, `&cdis_thumb_r`: 親指シフト用 behavior
+- `&cdis_*`: プリセット、または `CHORD_INPUT_BEHAVIOR*` macro で定義した文字 behavior
+- `&cdis_pt_word`: プリセットが提供する場合の一時的な ASCII passthrough mode
 
-## Layer Placement
+## レイヤー配置
 
-The chord input layer must be the lowest non-default layer.
-This is important because ZMK resolves bindings from higher layers first.
+chord input layer は、最下位の non-default layer に置く必要がある。
+これは ZMK が上位 layer から順に binding を解決するため。
 
 ```c
 #define LAYER_BASE 0
@@ -35,27 +37,28 @@ This is important because ZMK resolves bindings from higher layers first.
 #define LAYER_FN 3
 ```
 
-## Rearranging Keys in the Keymap
+## Keymap 上での再配置
 
-To change key positions, keep the behavior definitions and rearrange where they are used in `bindings`.
+キー位置を変えたい場合は、behavior 定義そのものではなく、`bindings` 内での配置を組み替える。
 
 ```dts
 nicola_layer {
     bindings = <
-        &cdis_kuten  &cdis_ka   &cdis_ta   &cdis_ko   &cdis_sa
-        &cdis_ra     &cdis_ti   &cdis_ku   &cdis_tu   &cdis_comma
-        &cdis_si     &cdis_u    &cdis_te   &cdis_ke   &cdis_se
-        &cdis_ha     &cdis_to   &cdis_ki   &cdis_i    &cdis_nn
-        &cdis_period &cdis_hi   &cdis_su   &cdis_hu   &cdis_he
-        &cdis_me     &cdis_so   &cdis_ne   &cdis_ho   &cdis_nakaguro
-                           &cdis_thumb_l SPACE  &cdis_thumb_r SPACE
+        &cdis_kuten   &cdis_ka   &cdis_ta   &cdis_ko   &cdis_sa
+        &cdis_ra      &cdis_ti   &cdis_ku   &cdis_tu   &cdis_comma
+        &cdis_touten  &cdis_dakuten
+        &cdis_si      &cdis_u    &cdis_te   &cdis_ke   &cdis_se
+        &cdis_ha      &cdis_to   &cdis_ki   &cdis_i    &cdis_nn
+        &cdis_period  &cdis_hi   &cdis_su   &cdis_hu   &cdis_he
+        &cdis_me      &cdis_so   &cdis_ne   &cdis_ho   &cdis_nakaguro
+                            &cdis_thumb_l SPACE  &cdis_thumb_r SPACE
     >;
 };
 ```
 
-## Overriding Kana on Existing Behaviors
+## 既存 Behavior の Kana を上書きする
 
-After including a preset, you can override the `kana` property of an existing behavior.
+プリセットを include したあとでも、既存 behavior の `kana` property は上書きできる。
 
 ```dts
 #include <behaviors/cdis-nicola.dtsi>
@@ -69,17 +72,17 @@ After including a preset, you can override the `kana` property of an existing be
 };
 ```
 
-The `kana` property is an array of 3 to 5 values:
+`kana` property は 3 個から 5 個の値を取る配列。
 
 - `<unshifted shift0 shift1>`
 - `<unshifted shift0 shift1 shift2>`
 - `<unshifted shift0 shift1 shift2 shift3>`
 
-Kana constants are defined in `include/zmk-chordis/keys.h`.
+かな定数は `include/zmk-chordis/keys.h` に定義されている。
 
-## Defining Custom Character Behaviors
+## 独自の文字 Behavior を定義する
 
-Use the helper macros from `#include <zmk-chordis/chord-input-map.h>`.
+`#include <zmk-chordis/chord-input-map.h>` にある helper macro を使う。
 
 ```dts
 #include <zmk-chordis/keys.h>
@@ -94,11 +97,11 @@ Use the helper macros from `#include <zmk-chordis/chord-input-map.h>`.
 };
 ```
 
-These become `&cdis_my_wa`, `&cdis_my_ka`, and `&cdis_my_ta` in your keymap.
+これらは keymap 上では `&cdis_my_wa`、`&cdis_my_ka`、`&cdis_my_ta` になる。
 
-## Mixing Non-Kana Keycodes with Kana Slots
+## かな面に非かなキーコードを混在させる
 
-Use `NC_KEY()` to place a raw ZMK keycode into a kana slot.
+生の ZMK keycode をかな面に入れたい場合は `CDIS_KEY()` を使う。
 
 ```dts
 #include <zmk-chordis/keys.h>
@@ -106,24 +109,24 @@ Use `NC_KEY()` to place a raw ZMK keycode into a kana slot.
 
 / {
     behaviors {
-        CHORD_INPUT_BEHAVIOR5(my_bspc, NC_KEY(BSPC), KANA_SA, KANA_NONE, KANA_NONE, KANA_NONE)
-        CHORD_INPUT_BEHAVIOR5(my_left, NC_KEY(LEFT), NC_KEY(LEFT), KANA_NONE, KANA_NONE, KANA_NONE)
+        CHORD_INPUT_BEHAVIOR5(my_bspc, CDIS_KEY(BSPC), KANA_SA, KANA_NONE, KANA_NONE, KANA_NONE)
+        CHORD_INPUT_BEHAVIOR5(my_left, CDIS_KEY(LEFT), CDIS_KEY(LEFT), KANA_NONE, KANA_NONE, KANA_NONE)
     };
 };
 ```
 
-This is how presets like Naginata place navigation or backspace on character positions.
+薙刀式のように、文字位置に navigation や backspace を置くプリセットは、この仕組みを使っている。
 
-## Thumb Tap Behavior
+## 親指キーのタップ動作
 
-Thumb behaviors default to `&kp` and receive the tap keycode from the keymap.
+親指 behavior のデフォルトは `&kp` で、tap 時の keycode は keymap 側から受け取る。
 
 ```dts
 &cdis_thumb_l SPACE
 &cdis_thumb_r SPACE
 ```
 
-You can override the underlying tap behavior on the node itself:
+node 側の `bindings` を上書きすれば、tap 時の基底 behavior も変更できる。
 
 ```dts
 &cdis_thumb_r {
@@ -131,13 +134,13 @@ You can override the underlying tap behavior on the node itself:
 };
 ```
 
-Then the keymap can pass a mouse button or another parameter that matches the behavior.
+この場合、keymap 側からは mouse button など、その behavior に対応した parameter を渡せる。
 
-## Built-In Hold-Tap for Character Keys
+## 文字キー向け Built-In Hold-Tap
 
-Combo-candidate keys should use the built-in hold-tap support instead of wrapping them in standard ZMK `hold-tap`.
+combo candidate key には、通常の ZMK `hold-tap` ではなく、このモジュールの built-in hold-tap を使う。
 
-The simplest pattern is to extend an existing preset behavior:
+最も簡単なのは、既存の preset behavior を拡張する方法。
 
 ```dts
 #include <behaviors/cdis-nicola.dtsi>
@@ -150,7 +153,7 @@ The simplest pattern is to extend an existing preset behavior:
 };
 ```
 
-If you need a separate plain and hold-tap version of the same kana, define a new behavior:
+同じかなに対して plain 版と hold-tap 版を分けたい場合は、新しい behavior を定義する。
 
 ```dts
 #include <zmk-chordis/chord-input-map.h>
@@ -162,7 +165,7 @@ If you need a separate plain and hold-tap version of the same kana, define a new
 };
 ```
 
-Available hold-tap helper variants:
+利用できる hold-tap helper variant:
 
 - `CHORD_INPUT_BEHAVIOR_HT`
 - `CHORD_INPUT_BEHAVIOR_HT_T`
@@ -171,9 +174,9 @@ Available hold-tap helper variants:
 - `CHORD_INPUT_BEHAVIOR5_HT`
 - `CHORD_INPUT_BEHAVIOR5_HT_T`
 
-## Passthrough-Word
+## Passthrough Word
 
-When the preset provides `&cdis_pt_word`, you can place it on any layer to temporarily send ASCII through the base layer.
+プリセットが `&cdis_pt_word` を提供している場合、どの layer にでも置いて、一時的に ASCII を base layer 経由で送れる。
 
 ```dts
 some_layer {
@@ -183,7 +186,7 @@ some_layer {
 };
 ```
 
-Typical configuration:
+典型的な設定:
 
 ```dts
 &cdis_pt_word {
@@ -195,7 +198,7 @@ Typical configuration:
 
 ## Auto-Off
 
-Use `auto-off-keys` on `&cdis_config` to leave the chord input layer automatically when certain modifier-key combinations are pressed.
+特定の modifier+key 組み合わせで自動的に chord input layer を抜けたい場合は、`&cdis_config` に `auto-off-keys` を設定する。
 
 ```dts
 &cdis_config {
@@ -205,10 +208,10 @@ Use `auto-off-keys` on `&cdis_config` to leave the chord input layer automatical
 };
 ```
 
-## Passthrough for Implicit-Modifier Behaviors
+## 暗黙 Modifier Behavior 用の Passthrough
 
-Some behaviors apply modifiers internally and are not detected by the normal modifier passthrough path.
-List them in `passthrough-behaviors` when needed.
+一部の behavior は内部で modifier を適用するため、通常の modifier passthrough では検出できません。
+必要に応じて、それらを `passthrough-behaviors` に列挙する。
 
 ```dts
 &cdis_config {
@@ -216,9 +219,9 @@ List them in `passthrough-behaviors` when needed.
 };
 ```
 
-## Timing Configuration
+## Timing 設定
 
-Timing options are configured on `&cdis_config`.
+タイミング関係の設定は `&cdis_config` で行う。
 
 ```dts
 &cdis_config {
@@ -228,10 +231,10 @@ Timing options are configured on `&cdis_config`.
 };
 ```
 
-## Combo Tables
+## Combo Table
 
-Naginata includes combo tables automatically through its preset include.
-If you are defining your own layout, combo nodes use the `zmk,chord-input-char-combo` compatible.
+薙刀式は、preset include によって combo table を自動で含む。
+独自配列を定義する場合、combo node には `zmk,chord-input-char-combo` compatible を使う。
 
 ```dts
 / {
@@ -247,4 +250,5 @@ If you are defining your own layout, combo nodes use the `zmk,chord-input-char-c
 See also:
 
 - [getting-started.md](getting-started.md)
+- [getting-started.en.md](getting-started.en.md)
 - [design.md](design.md)

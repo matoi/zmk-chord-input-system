@@ -2111,8 +2111,8 @@ static void output_kana(uint32_t kana_id, int64_t timestamp) {
         return;
     }
 
-    /* NC_KEY path intentionally runs before KANA_COUNT validation. */
-    if (kana_id >= NC_RAW_KEYCODE_THRESHOLD) {
+    /* CDIS_KEY path intentionally runs before KANA_COUNT validation. */
+    if (kana_id >= CDIS_RAW_KEYCODE_THRESHOLD) {
         LOG_DBG("output_kana raw keycode 0x%08x", kana_id);
         raise_zmk_keycode_state_changed_from_encoded(kana_id, true, timestamp);
         raise_zmk_keycode_state_changed_from_encoded(kana_id, false, timestamp);

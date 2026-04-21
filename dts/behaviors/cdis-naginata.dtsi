@@ -22,15 +22,15 @@
  *
  *   naginata_layer {
  *       bindings = <
- *           NC_NAGINATA_LT  NC_NAGINATA_RT
- *           NC_NAGINATA_LM  NC_NAGINATA_RM
- *           NC_NAGINATA_LB  NC_NAGINATA_RB
- *           NC_NAGINATA_TL  NC_NAGINATA_TR
+ *           CDIS_NAGINATA_LT  CDIS_NAGINATA_RT
+ *           CDIS_NAGINATA_LM  CDIS_NAGINATA_RM
+ *           CDIS_NAGINATA_LB  CDIS_NAGINATA_RB
+ *                          CDIS_NAGINATA_LH  CDIS_NAGINATA_RH
  *       >;
  *   };
  *
  * Limitations:
- *   - T/Y are navigation keys (←/→) via NC_KEY, participating in passthrough.
+ *   - T/Y are navigation keys (←/→) via CDIS_KEY, participating in passthrough.
  */
 
 #include <dt-bindings/zmk/keys.h>
@@ -64,9 +64,9 @@
         /* W */ CHORD_INPUT_BEHAVIOR5(ng_ki,   KANA_KI,       KANA_ME,       KANA_NONE, KANA_NONE, KANA_NONE)
         /* E */ CHORD_INPUT_BEHAVIOR5(ng_te,   KANA_TE,       KANA_RI,       KANA_NONE, KANA_NONE, KANA_NONE)
         /* R */ CHORD_INPUT_BEHAVIOR5(ng_si,   KANA_SI,       KANA_NE,       KANA_NONE, KANA_NONE, KANA_NONE)
-        /* T */ CHORD_INPUT_BEHAVIOR5(ng_left, NC_KEY(LEFT),  NC_KEY(LEFT),  KANA_NONE, KANA_NONE, KANA_NONE)
-        /* Y */ CHORD_INPUT_BEHAVIOR5(ng_right,NC_KEY(RIGHT), NC_KEY(RIGHT), KANA_NONE, KANA_NONE, KANA_NONE)
-        /* U */ CHORD_INPUT_BEHAVIOR5(ng_bspc, NC_KEY(BSPC),  KANA_SA,       KANA_NONE, KANA_NONE, KANA_NONE)
+        /* T */ CHORD_INPUT_BEHAVIOR5(ng_left, CDIS_KEY(LEFT),  CDIS_KEY(LEFT),  KANA_NONE, KANA_NONE, KANA_NONE)
+        /* Y */ CHORD_INPUT_BEHAVIOR5(ng_right,CDIS_KEY(RIGHT), CDIS_KEY(RIGHT), KANA_NONE, KANA_NONE, KANA_NONE)
+        /* U */ CHORD_INPUT_BEHAVIOR5(ng_bspc, CDIS_KEY(BSPC),  KANA_SA,         KANA_NONE, KANA_NONE, KANA_NONE)
         /* I */ CHORD_INPUT_BEHAVIOR5(ng_ru,   KANA_RU,       KANA_YO,       KANA_NONE, KANA_NONE, KANA_NONE)
         /* O */ CHORD_INPUT_BEHAVIOR5(ng_su,   KANA_SU,       KANA_E,        KANA_NONE, KANA_NONE, KANA_NONE)
         /* P */ CHORD_INPUT_BEHAVIOR5(ng_he,   KANA_HE,       KANA_YU,       KANA_NONE, KANA_NONE, KANA_NONE)
@@ -137,20 +137,20 @@
 /* === Naginata keymap layout macros === */
 
 /* Top row */
-#define NC_NAGINATA_LT  &cdis_ng_kogaki  &cdis_ng_ki    &cdis_ng_te  &cdis_ng_si  &cdis_ng_left
-#define NC_NAGINATA_RT  &cdis_ng_right   &cdis_ng_bspc  &cdis_ng_ru  &cdis_ng_su  &cdis_ng_he
+#define CDIS_NAGINATA_LT  &cdis_ng_kogaki  &cdis_ng_ki    &cdis_ng_te  &cdis_ng_si  &cdis_ng_left
+#define CDIS_NAGINATA_RT  &cdis_ng_right   &cdis_ng_bspc  &cdis_ng_ru  &cdis_ng_su  &cdis_ng_he
 
 /* Home row */
-#define NC_NAGINATA_LM  &cdis_ng_ro  &cdis_ng_ke      &cdis_ng_to  &cdis_ng_daku_l  &cdis_ng_xtu
-#define NC_NAGINATA_RM  &cdis_ng_ku  &cdis_ng_daku_r  &cdis_ng_i   &cdis_ng_u       &cdis_ng_chou
+#define CDIS_NAGINATA_LM  &cdis_ng_ro  &cdis_ng_ke      &cdis_ng_to  &cdis_ng_daku_l  &cdis_ng_xtu
+#define CDIS_NAGINATA_RM  &cdis_ng_ku  &cdis_ng_daku_r  &cdis_ng_i   &cdis_ng_u       &cdis_ng_chou
 
 /* Bottom row */
-#define NC_NAGINATA_LB  &cdis_ng_ho  &cdis_ng_hi       &cdis_ng_ha  &cdis_ng_ko  &cdis_ng_hdaku_l
-#define NC_NAGINATA_RB  &cdis_ng_ta  &cdis_ng_hdaku_r  &cdis_ng_nn  &cdis_ng_ra  &cdis_ng_re
+#define CDIS_NAGINATA_LB  &cdis_ng_ho  &cdis_ng_hi       &cdis_ng_ha  &cdis_ng_ko  &cdis_ng_hdaku_l
+#define CDIS_NAGINATA_RB  &cdis_ng_ta  &cdis_ng_hdaku_r  &cdis_ng_nn  &cdis_ng_ra  &cdis_ng_re
 
 /* Thumbs */
-#define NC_NAGINATA_LH  &cdis_thumb_l SPACE
-#define NC_NAGINATA_RH  &cdis_thumb_r SPACE
+#define CDIS_NAGINATA_LH  &cdis_thumb_l SPACE
+#define CDIS_NAGINATA_RH  &cdis_thumb_r SPACE
 
 /* Passthrough word (temporary ASCII mode) */
-#define NC_PT_WORD  &cdis_pt_word
+#define CDIS_PT_WORD  &cdis_pt_word

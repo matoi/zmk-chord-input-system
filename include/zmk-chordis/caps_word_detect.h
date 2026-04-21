@@ -31,10 +31,10 @@ struct cdis_pt_word_data_peek {
     bool active;
 };
 
-#define _CIS_PT_WORD_DEV(node_id) DEVICE_DT_GET(node_id),
+#define _CDIS_PT_WORD_DEV(node_id) DEVICE_DT_GET(node_id),
 
 static const struct device *cdis_pt_word_devs[] = {
-    DT_FOREACH_STATUS_OKAY(zmk_behavior_chord_input_passthrough_word, _CIS_PT_WORD_DEV)
+    DT_FOREACH_STATUS_OKAY(zmk_behavior_chord_input_passthrough_word, _CDIS_PT_WORD_DEV)
 };
 
 static inline bool chordis_is_pt_word_active(void) {
@@ -66,11 +66,11 @@ struct cdis_pt_behavior_data {
     bool active;
 };
 
-#define _CIS_PT_DEV(node_id, prop, idx) \
+#define _CDIS_PT_DEV(node_id, prop, idx) \
     DEVICE_DT_GET(DT_PHANDLE_BY_IDX(node_id, prop, idx)),
 
 static const struct device *cdis_pt_behavior_devs[] = {
-    DT_FOREACH_PROP_ELEM(CDIS_CONFIG_NODE, passthrough_behaviors, _CIS_PT_DEV)
+    DT_FOREACH_PROP_ELEM(CDIS_CONFIG_NODE, passthrough_behaviors, _CDIS_PT_DEV)
 };
 
 static inline bool chordis_is_ext_passthrough_active(void) {

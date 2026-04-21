@@ -21,7 +21,7 @@
  * In keymap:
  *   &cdis_pt_ctrl   // mod active -> base layer key; no mod -> LCTRL
  */
-#define ZMK_BEHAVIOR_CORE_cis_passthrough \
+#define ZMK_BEHAVIOR_CORE_cdis_passthrough \
     compatible = "zmk,behavior-chord-input-passthrough"; \
     #binding-cells = <0>
 
@@ -29,7 +29,7 @@
     / { \
         behaviors { \
             name: name { \
-                ZMK_BEHAVIOR_CORE_cis_passthrough; \
+                ZMK_BEHAVIOR_CORE_cdis_passthrough; \
                 __VA_ARGS__ \
             }; \
         }; \

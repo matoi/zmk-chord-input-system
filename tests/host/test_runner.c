@@ -1647,14 +1647,14 @@ static void test_kogaki_reverse_order(void) {
     TEST_END();
 }
 
-/* ── NC_KEY (raw keycode in kana slot) tests ─────────────── */
+/* ── CDIS_KEY (raw keycode in kana slot) tests ───────────── */
 
 /*
- * NC_KEY: single char with NC_KEY(BSPC) on unshifted face → timeout → BSPC tap.
+ * CDIS_KEY: single char with CDIS_KEY(BSPC) on unshifted face → timeout → BSPC tap.
  */
 static void test_cis_key_single_unshifted(void) {
-    TEST_BEGIN("NC_KEY: single char unshifted → BSPC");
-    press_char(NC_KEY(BSPC), 10, 0);
+    TEST_BEGIN("CDIS_KEY: single char unshifted → BSPC");
+    press_char(CDIS_KEY(BSPC), 10, 0);
     CHECK(mock_event_count == 0, "no output before timeout");
     CHECK(mock_fire_pending_timer(), "timer should fire");
     expect_raw_keycode(BSPC, "BSPC");
@@ -1662,13 +1662,13 @@ static void test_cis_key_single_unshifted(void) {
 }
 
 /*
- * NC_KEY: char has kana on unshifted, NC_KEY(BSPC) on center-shift face.
+ * CDIS_KEY: char has kana on unshifted, CDIS_KEY(BSPC) on center-shift face.
  * Thumb+char → shifted face → BSPC tap.
  */
 static void test_cis_key_shifted_face(void) {
-    TEST_BEGIN("NC_KEY: thumb+char → shifted NC_KEY(BSPC)");
+    TEST_BEGIN("CDIS_KEY: thumb+char → shifted CDIS_KEY(BSPC)");
     uint32_t kana[CHORDIS_KANA_SLOTS] = {
-        KANA_VU, NC_KEY(BSPC), KANA_NONE, KANA_NONE, KANA_NONE
+        KANA_VU, CDIS_KEY(BSPC), KANA_NONE, KANA_NONE, KANA_NONE
     };
     press_kana(kana, 10, 0);
     press_thumb(CHORDIS_SHIFT_0, 30, 20);
@@ -1679,13 +1679,13 @@ static void test_cis_key_shifted_face(void) {
 }
 
 /*
- * NC_KEY: unshifted face is kana, no thumb → normal romaji output.
- * Ensures NC_KEY on a different face doesn't interfere.
+ * CDIS_KEY: unshifted face is kana, no thumb → normal romaji output.
+ * Ensures CDIS_KEY on a different face doesn't interfere.
  */
 static void test_cis_key_kana_face_unaffected(void) {
-    TEST_BEGIN("NC_KEY: kana face unaffected by NC_KEY on shift face");
+    TEST_BEGIN("CDIS_KEY: kana face unaffected by CDIS_KEY on shift face");
     uint32_t kana[CHORDIS_KANA_SLOTS] = {
-        KANA_VU, NC_KEY(BSPC), KANA_NONE, KANA_NONE, KANA_NONE
+        KANA_VU, CDIS_KEY(BSPC), KANA_NONE, KANA_NONE, KANA_NONE
     };
     press_kana(kana, 10, 0);
     CHECK(mock_fire_pending_timer(), "timer should fire");
@@ -1694,33 +1694,33 @@ static void test_cis_key_kana_face_unaffected(void) {
 }
 
 /*
- * NC_KEY: NC_KEY(LEFT) — arrow key, not just BSPC.
+ * CDIS_KEY: CDIS_KEY(LEFT) — arrow key, not just BSPC.
  */
 static void test_cis_key_left_arrow(void) {
-    TEST_BEGIN("NC_KEY: LEFT arrow via NC_KEY");
-    press_char(NC_KEY(LEFT), 10, 0);
+    TEST_BEGIN("CDIS_KEY: LEFT arrow via CDIS_KEY");
+    press_char(CDIS_KEY(LEFT), 10, 0);
     CHECK(mock_fire_pending_timer(), "timer should fire");
     expect_raw_keycode(LEFT, "LEFT");
     TEST_END();
 }
 
 /*
- * NC_KEY: NC_KEY(LS(BSPC)) — modifier-wrapped keycode.
+ * CDIS_KEY: CDIS_KEY(LS(BSPC)) — modifier-wrapped keycode.
  * Verifies that modifier bits in the encoded keycode are preserved.
  */
 static void test_cis_key_with_modifier(void) {
-    TEST_BEGIN("NC_KEY: LS(BSPC) modifier-wrapped keycode");
-    press_char(NC_KEY(LS(BSPC)), 10, 0);
+    TEST_BEGIN("CDIS_KEY: LS(BSPC) modifier-wrapped keycode");
+    press_char(CDIS_KEY(LS(BSPC)), 10, 0);
     CHECK(mock_fire_pending_timer(), "timer should fire");
     expect_raw_keycode(LS(BSPC), "LS(BSPC)");
     TEST_END();
 }
 
 /*
- * NC_KEY: KANA_NONE still produces no output (regression guard).
+ * CDIS_KEY: KANA_NONE still produces no output (regression guard).
  */
 static void test_cis_key_none_still_silent(void) {
-    TEST_BEGIN("NC_KEY: KANA_NONE still silent");
+    TEST_BEGIN("CDIS_KEY: KANA_NONE still silent");
     uint32_t kana[CHORDIS_KANA_SLOTS] = {
         KANA_NONE, KANA_NONE, KANA_NONE, KANA_NONE, KANA_NONE
     };
@@ -1731,11 +1731,11 @@ static void test_cis_key_none_still_silent(void) {
 }
 
 /*
- * NC_KEY: char release before timeout (sequential path) with NC_KEY.
+ * CDIS_KEY: char release before timeout (sequential path) with CDIS_KEY.
  */
 static void test_cis_key_release_before_timeout(void) {
-    TEST_BEGIN("NC_KEY: char released before timeout → still outputs on timer");
-    press_char(NC_KEY(BSPC), 10, 0);
+    TEST_BEGIN("CDIS_KEY: char released before timeout → still outputs on timer");
+    press_char(CDIS_KEY(BSPC), 10, 0);
     release_char(10, 50);
     CHECK(mock_event_count == 0, "no output on release");
     CHECK(mock_fire_pending_timer(), "timer should fire");
@@ -1814,7 +1814,7 @@ int main(int argc, char **argv) {
     test_kogaki_no_match();
     test_kogaki_reverse_order();
 
-    /* NC_KEY (raw keycode in kana slot) */
+    /* CDIS_KEY (raw keycode in kana slot) */
     test_cis_key_single_unshifted();
     test_cis_key_shifted_face();
     test_cis_key_kana_face_unaffected();

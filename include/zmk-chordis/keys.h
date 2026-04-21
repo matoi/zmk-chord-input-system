@@ -257,9 +257,9 @@
 #define KANA_COUNT 185
 
 /*
- * NC_KEY — embed a raw ZMK keycode in a kana face slot.
+ * CDIS_KEY — embed a raw ZMK keycode in a kana face slot.
  *
- * Kana IDs occupy [0, NC_RAW_KEYCODE_THRESHOLD).  ZMK encoded keycodes
+ * Kana IDs occupy [0, CDIS_RAW_KEYCODE_THRESHOLD).  ZMK encoded keycodes
  * always include a nonzero HID usage page in bits 16-23, so their
  * smallest value is 0x00010000 — well above any kana ID.
  *
@@ -270,8 +270,8 @@
  * to grow from the current 184 up to 65535.
  *
  * Usage:
- *   CHORD_INPUT_BEHAVIOR5(ng_left, NC_KEY(LEFT), NC_KEY(LEFT), ...)
- *   CHORD_INPUT_BEHAVIOR5(ng_vu,   KANA_VU,      NC_KEY(BSPC), ...)
+ *   CHORD_INPUT_BEHAVIOR5(ng_left, CDIS_KEY(LEFT), CDIS_KEY(LEFT), ...)
+ *   CHORD_INPUT_BEHAVIOR5(ng_vu,   KANA_VU,       CDIS_KEY(BSPC), ...)
  */
-#define NC_RAW_KEYCODE_THRESHOLD 0x10000
-#define NC_KEY(k)                (k)
+#define CDIS_RAW_KEYCODE_THRESHOLD 0x10000
+#define CDIS_KEY(k)              (k)
