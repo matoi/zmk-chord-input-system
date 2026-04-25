@@ -34,8 +34,11 @@ extern struct mock_event mock_event_log[MOCK_EVENT_LOG_SIZE];
 extern int               mock_event_count;
 extern int               mock_verbose;
 extern uint8_t           mock_explicit_mods;
+extern int64_t           mock_now_ms;
 
 void mock_reset(void);
+void mock_set_time(int64_t now_ms);
+void mock_advance_time(int64_t now_ms);
 
 /* ── Mock keymap (D-1.5: base-layer binding lookup) ───────── */
 
@@ -58,6 +61,7 @@ struct mock_timer_slot {
     struct k_work_delayable *work;
     bool                     active;
     int                      delay_ms;
+    int64_t                  due_at_ms;
 };
 
 extern struct mock_timer_slot mock_timers[MOCK_MAX_TIMERS];

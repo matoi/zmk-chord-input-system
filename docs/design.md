@@ -534,43 +534,60 @@ Current and proposed knobs under this principle:
 | `tapping-term-ms` | HT key | Own per-tracker timer | Each HT runs independently |
 | `quick-tap-ms` | HT key (vs. own prior release) | Per-position release history | No interaction |
 | `hold-required-key-positions` | HT key | First non-self partner must be in self's list | Each HT checks its own list against the partner; HT_A's list says nothing about HT_B |
-| `hold-after-partner-release-ms` | Global on `&cdis_config` (per-key not yet implemented) | Window after partner release before HOLD commits | Single global value — no multi-key resolution. When per-key is added, **take `max` across all HTs pending on the same plain release.** `min` would let the most aggressive HT yank decision away from a more lenient one — defeats per-key tuning. |
+| `hold-after-partner-release-ms` | HT key | Short grace period after partner release before HOLD commits | Use `max` across all HTs pending on the same plain release. `min` would let the most aggressive HT yank decision away from a more lenient one — defeats per-key tuning. |
 | `require-prior-idle-ms` | HT key (anchored at own press) | Block lone HOLD if any key was released within N ms before this HT was pressed | Each HT independent. A still-undecided earlier HT is just a held key for this purpose |
 | `hold-while-undecided` (proposed) | HT key | Whether to emit modifier early during undecided window | Each HT opts in independently |
 | `retro-tap` (proposed) | HT key | Suppress lone-HOLD on tapping-term expiry | Each HT independent |
 
-When per-key `hold-after-partner-release-ms` is implemented later, its
-timer lives on the *plain partner tracker* (that is where the release
-event arrives), but the wait duration must be sourced from the HT side.
-When scheduling the timer, walk all HT-undecided trackers that could
-promote on this plain's release and use the longest configured window.
-If a later-arriving HT becomes pending *after* the timer was already
-scheduled, the engine must extend the wait if that HT's value exceeds
-the remaining time — otherwise a HT configured for a long combo window
-can be silently truncated by an earlier short-window peer.
+`hold-after-partner-release-ms` is intentionally much smaller than
+`tapping-term-ms`. It is a release-order grace period: when a plain
+combo partner is released while an HT key is still undecided, HOLD
+commit is delayed briefly so a near-immediate HT release can still
+resolve as combo. It never makes HOLD commit earlier than
+`tapping-term-ms`. If the partner release happens near the HT's
+`tapping-term-ms` boundary, it may delay HOLD slightly beyond the
+tapping term; that is intentional, but the value should stay small
+enough that it absorbs jitter rather than becoming the primary hold/tap
+threshold.
+
+For each HT pending on a plain partner release, the effective HOLD
+commit deadline is:
+
+```text
+max(HT pressed + tapping-term-ms,
+    partner released + hold-after-partner-release-ms)
+```
+
+The timer lives on the *plain partner tracker* (that is where the
+release event arrives), but the wait duration is sourced from the HT
+side. When scheduling the timer, walk all HT-undecided trackers that
+could promote on this plain's release and use the latest effective
+deadline. This prevents a short-window HT from truncating a longer-window
+peer, and it also prevents an early partner release from committing HOLD
+before the HT's own tapping term.
 
 #### Inheritance: per-key → global → fallback
 
 For knobs with a meaningful global default (`tapping-term-ms`,
-`quick-tap-ms`, `require-prior-idle-ms`), values resolve in three tiers:
+`quick-tap-ms`, `require-prior-idle-ms`,
+`hold-after-partner-release-ms`), values resolve in three tiers:
 
 1. Per-key DT property on the HT behavior, if non-zero.
 2. Global default on `&cdis_config`
    (`default-tapping-term-ms`, `default-quick-tap-ms`,
-   `default-require-prior-idle-ms`).
-3. Hardcoded engine fallback (200 / 0 / 0 respectively).
+   `default-require-prior-idle-ms`, or global
+   `hold-after-partner-release-ms`).
+3. Hardcoded engine fallback (200 / 0 / 0 / 30 respectively).
 
 The per-key `0` value is the **inherit sentinel**. The YAML default for
-`tapping-term-ms`, `quick-tap-ms`, and `require-prior-idle-ms` are `0`,
-so a behavior that does not specify those properties automatically
-inherits the global. To explicitly disable `quick-tap-ms` or
-`require-prior-idle-ms` per key while a non-zero global is configured,
-set the per-key value to `1` (any non-zero value bypasses inheritance,
-and `1` is functionally a no-op for these millisecond windows).
-
-`hold-after-partner-release-ms` is **global only** for now (no per-key
-override) — it lives on `&cdis_config` and is consumed directly with a
-hardcoded fallback of 80 ms.
+`tapping-term-ms`, `quick-tap-ms`, `require-prior-idle-ms`, and
+`hold-after-partner-release-ms` are `0`, so a behavior that does not
+specify those properties automatically inherits the global. To
+explicitly disable `quick-tap-ms`, `require-prior-idle-ms`, or
+`hold-after-partner-release-ms` per key while a non-zero global is
+configured, set the per-key value to `1` (any non-zero value bypasses
+inheritance, and `1` is functionally a no-op for these millisecond
+windows).
 
 Without tier 2, configuring 8–10 home row mods means repeating the same
 literal across every behavior; tier 2 keeps per-key tuning ergonomic

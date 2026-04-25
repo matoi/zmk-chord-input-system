@@ -23,6 +23,7 @@ struct mock_event       mock_event_log[MOCK_EVENT_LOG_SIZE];
 int                     mock_event_count = 0;
 int                     mock_verbose     = 0;
 uint8_t                 mock_explicit_mods = 0;
+int64_t                 mock_now_ms = 0;
 
 struct mock_timer_slot  mock_timers[MOCK_MAX_TIMERS];
 
@@ -36,12 +37,33 @@ static struct zmk_behavior_binding mock_keymap[MOCK_KEYMAP_SIZE];
 void mock_reset(void) {
     mock_event_count   = 0;
     mock_explicit_mods = 0;
+    mock_now_ms        = 0;
     memset(mock_event_log, 0, sizeof(mock_event_log));
     memset(mock_keymap,    0, sizeof(mock_keymap));
     for (int i = 0; i < MOCK_MAX_TIMERS; i++) {
         mock_timers[i].active = false;
         /* Keep .work pointer so re-scheduling the same delayable maps to the same slot */
     }
+}
+
+void mock_set_time(int64_t now_ms) {
+    mock_now_ms = now_ms;
+}
+
+void mock_advance_time(int64_t now_ms) {
+    for (;;) {
+        int best = -1;
+        for (int i = 0; i < MOCK_MAX_TIMERS; i++) {
+            if (!mock_timers[i].active) continue;
+            if (mock_timers[i].due_at_ms > now_ms) continue;
+            if (best < 0 || mock_timers[i].due_at_ms < mock_timers[best].due_at_ms) {
+                best = i;
+            }
+        }
+        if (best < 0) break;
+        mock_fire_timer_slot(best);
+    }
+    mock_now_ms = now_ms;
 }
 
 void mock_set_keymap_binding(uint8_t position, const char *behavior_dev,
@@ -157,6 +179,7 @@ int k_work_schedule(struct k_work_delayable *w, int delay) {
     if (idx < 0) return -1;
     mock_timers[idx].active   = true;
     mock_timers[idx].delay_ms = delay;
+    mock_timers[idx].due_at_ms = mock_now_ms + delay;
     w->scheduled = true;
     w->delay_ms  = delay;
     return 0;
@@ -172,17 +195,17 @@ int k_work_cancel_delayable(struct k_work_delayable *w) {
     return 0;
 }
 
-int64_t k_uptime_get(void) { return 0; }
+int64_t k_uptime_get(void) { return mock_now_ms; }
 
 /* ── Timer firing ────────────────────────────────────────── */
 
 bool mock_fire_pending_timer(void) {
-    /* Fire the active timer with the smallest delay (closest to firing).
+    /* Fire the active timer with the earliest absolute deadline.
      * If multiple are tied, fire the first one found. */
     int best = -1;
     for (int i = 0; i < MOCK_MAX_TIMERS; i++) {
         if (!mock_timers[i].active) continue;
-        if (best < 0 || mock_timers[i].delay_ms < mock_timers[best].delay_ms) {
+        if (best < 0 || mock_timers[i].due_at_ms < mock_timers[best].due_at_ms) {
             best = i;
         }
     }
@@ -194,6 +217,7 @@ bool mock_fire_timer_slot(int idx) {
     if (idx < 0 || idx >= MOCK_MAX_TIMERS) return false;
     if (!mock_timers[idx].active) return false;
     struct k_work_delayable *w = mock_timers[idx].work;
+    mock_now_ms = mock_timers[idx].due_at_ms;
     mock_timers[idx].active = false;
     w->scheduled            = false;
     if (w->handler) {

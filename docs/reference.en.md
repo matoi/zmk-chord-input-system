@@ -240,7 +240,7 @@ The hold-tap timing properties have global defaults on `&cdis_config`, used when
     default-tapping-term-ms        = <180>;
     default-quick-tap-ms           = <120>;
     default-require-prior-idle-ms  = <100>;
-    hold-after-partner-release-ms  = <60>;
+    hold-after-partner-release-ms  = <30>;
 };
 ```
 
@@ -248,11 +248,20 @@ Resolution order (per knob):
 
 1. Per-key value on the character behavior, if non-zero.
 2. Global default on `&cdis_config`.
-3. Built-in fallback (`default-tapping-term-ms = 200`, `default-quick-tap-ms = 0`, `default-require-prior-idle-ms = 0`, `hold-after-partner-release-ms = 80`).
+3. Built-in fallback (`default-tapping-term-ms = 200`, `default-quick-tap-ms = 0`, `default-require-prior-idle-ms = 0`, `hold-after-partner-release-ms = 30`).
 
-`hold-after-partner-release-ms` is the window after a plain combo partner is released during which an HT-undecided peer can still flip the press to a combo. Shorter values commit to HOLD faster (HT-friendly); longer values keep the combo capture chance open longer.
+`hold-after-partner-release-ms` is a short grace period after a plain combo partner is released during which an HT-undecided peer can still flip the press to a combo. It never makes HOLD commit earlier than `tapping-term-ms`. If the partner release happens near the `tapping-term-ms` boundary, this can delay HOLD slightly beyond the tapping term. Keep it much smaller than `tapping-term-ms`; it is meant to absorb release-order jitter and avoid unintended modifier activation, not to define the primary hold/tap threshold.
 
-`hold-after-partner-release-ms` has no per-key override yet; `tapping-term-ms`, `quick-tap-ms`, and `require-prior-idle-ms` may be overridden per key.
+For each HT, the HOLD commit deadline is:
+
+```text
+max(HT pressed + tapping-term-ms,
+    partner released + hold-after-partner-release-ms)
+```
+
+When several HT-undecided keys are pending on the same plain partner release, the engine uses the latest effective deadline among them. This prevents a short-window HT from truncating another HT that intentionally waits longer for combo release.
+
+`tapping-term-ms`, `quick-tap-ms`, `require-prior-idle-ms`, and `hold-after-partner-release-ms` may be overridden per key.
 
 To explicitly disable `quick-tap-ms` on a single key while a non-zero global is active, set the per-key value to `<1>` (any non-zero value bypasses inheritance, and `1` is functionally a no-op for repeat protection).
 

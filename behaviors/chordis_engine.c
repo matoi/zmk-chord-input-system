@@ -46,7 +46,7 @@ static struct chordis_timing_config timing = {
     .default_tapping_term_ms = 200,
     .default_quick_tap_ms    = 0,
     .default_require_prior_idle_ms = 0,
-    .hold_after_partner_release_ms = 80,
+    .hold_after_partner_release_ms = 30,
 };
 
 /* Most recent release timestamp across char + thumb trackers. Used by
@@ -128,6 +128,7 @@ struct key_tracker {
     bool                          ht_configured;
     uint32_t                      tapping_term_ms;
     uint32_t                      quick_tap_ms;
+    uint32_t                      hold_after_partner_release_ms;
     struct zmk_behavior_binding   hold_binding;
     struct k_work_delayable       tapping_term_timer;
     bool                          tapping_term_timer_inited;
@@ -139,6 +140,7 @@ struct key_tracker {
      * (→ combo) or fires (→ HT becomes HOLD). */
     bool                          awaiting_hold_commit;
     int64_t                       released_ts;
+    uint32_t                      hold_commit_delay_ms;
     struct k_work_delayable       hold_commit_timer;
     bool                          hold_commit_timer_inited;
 
@@ -165,8 +167,9 @@ struct key_tracker {
  * When the plain combo partner B is released while HT-UNDECIDED A is held,
  * we wait this many ms for A's release before deciding combo vs hold. */
 /* Wait window after a plain combo partner is released before the engine
- * commits an HT-undecided peer to HOLD. Sourced from
- * timing.hold_after_partner_release_ms (cdis_config global; default 80 ms). */
+ * commits an HT-undecided peer to HOLD. Each HT may tune the grace period;
+ * when multiple HTs share a plain release, the engine uses the maximum
+ * resolved value so a short-window peer cannot truncate a longer one. */
 
 /* ── Singleton state machine ──────────────────────────────── */
 
@@ -379,6 +382,7 @@ static struct key_tracker *tracker_alloc(void) {
             t->has_hold        = false;
             t->ht_configured   = false;
             t->awaiting_hold_commit = false;
+            t->hold_commit_delay_ms = 0;
             t->blocked_by_prior_plain = false;
             t->hrkp_positions       = NULL;
             t->hrkp_positions_count = 0;
@@ -410,6 +414,7 @@ static void tracker_free(struct key_tracker *t) {
     t->in_use          = false;
     t->has_hold        = false;
     t->awaiting_hold_commit = false;
+    t->hold_commit_delay_ms = 0;
     t->blocked_by_prior_plain = false;
     t->resolution      = TRK_UNDECIDED;
 }
@@ -470,6 +475,40 @@ static struct key_tracker *find_ht_undecided_for_partner(
         }
     }
     return NULL;
+}
+
+/** Return the longest effective hold-commit delay among HT trackers that
+ * would be resolved by a hold-commit firing for this plain tracker.
+ *
+ * The commit deadline for each HT is:
+ *   max(HT press + tapping-term, plain release + hold-after-partner-release)
+ *
+ * This means hold-after-partner-release can delay HOLD slightly beyond
+ * tapping-term near the boundary, but it must never make HOLD commit earlier
+ * than tapping-term. Multiple HTs use the latest deadline so a short-window
+ * peer cannot truncate a longer one. */
+static uint32_t max_hold_commit_delay_for_pending_hts(
+    const struct key_tracker *partner,
+    const struct key_tracker *exclude) {
+    int64_t latest_deadline = partner->released_ts;
+    for (int i = 0; i < CHORDIS_MAX_TRACKERS; i++) {
+        struct key_tracker *t = &sm.chars[i];
+        if (t == exclude) continue;
+        if (!t->in_use || !t->has_hold || t->resolution != TRK_UNDECIDED) {
+            continue;
+        }
+        int64_t tapping_deadline =
+            t->pressed_ts + (int64_t)t->tapping_term_ms;
+        int64_t partner_grace_deadline =
+            partner->released_ts + (int64_t)t->hold_after_partner_release_ms;
+        int64_t deadline = tapping_deadline > partner_grace_deadline
+                               ? tapping_deadline
+                               : partner_grace_deadline;
+        if (deadline > latest_deadline) {
+            latest_deadline = deadline;
+        }
+    }
+    return (uint32_t)(latest_deadline - partner->released_ts);
 }
 
 /** Find the oldest non-HT (plain) tracker, or NULL if none. */
@@ -884,6 +923,10 @@ static void tracker_apply_hold(struct key_tracker *t,
     uint32_t require_prior_idle_ms = hold->require_prior_idle_ms != 0
                                    ? hold->require_prior_idle_ms
                                    : timing.default_require_prior_idle_ms;
+    uint32_t hold_after_partner_release_ms =
+        hold->hold_after_partner_release_ms != 0
+            ? hold->hold_after_partner_release_ms
+            : timing.hold_after_partner_release_ms;
     /* require-prior-idle gate: if any key was released within the
      * configured window before this press, force tap (skip arming the
      * hold timer). Mirrors hrkp deny semantics — the tracker stays
@@ -911,6 +954,7 @@ static void tracker_apply_hold(struct key_tracker *t,
     t->has_hold        = true;
     t->tapping_term_ms = tapping_term_ms;
     t->quick_tap_ms    = quick_tap_ms;
+    t->hold_after_partner_release_ms = hold_after_partner_release_ms;
     t->hold_binding    = hold->binding;
     /* Slice G: copy hrkp pointer/count. The pointer references storage owned
      * by the behavior config (lifetime: program), so a raw pointer is safe. */
@@ -1308,11 +1352,14 @@ void chordis_on_char_released(struct zmk_behavior_binding_event event) {
         struct key_tracker *ht_undecided = find_ht_undecided_for_partner(released_t, released_t);
 
         if (ht_undecided != NULL && !released_t->has_hold) {
-            LOG_DBG("plain release while HT undecided pos=%d → schedule hold-commit %dms",
-                    released_t->position, timing.hold_after_partner_release_ms);
             released_t->awaiting_hold_commit = true;
             released_t->released_ts     = event.timestamp;
-            k_work_schedule(&released_t->hold_commit_timer, K_MSEC(timing.hold_after_partner_release_ms));
+            uint32_t commit_delay_ms =
+                max_hold_commit_delay_for_pending_hts(released_t, released_t);
+            LOG_DBG("plain release while HT undecided pos=%d → schedule hold-commit %dms",
+                    released_t->position, commit_delay_ms);
+            released_t->hold_commit_delay_ms = commit_delay_ms;
+            k_work_schedule(&released_t->hold_commit_timer, K_MSEC(commit_delay_ms));
             return;
         }
 
@@ -1902,17 +1949,35 @@ static void tapping_term_handler(struct k_work *work) {
     if (!t || t->resolution != TRK_UNDECIDED) {
         return;
     }
+    int64_t tt_ts = t->pressed_ts + t->tapping_term_ms;
     if (t->blocked_by_prior_plain &&
         tracker_has_active_prior_plain_before(t)) {
         LOG_DBG("tapping_term fired: pos=%d blocked by prior plain → stay UNDECIDED",
                 t->position);
         return;
     }
+    int64_t latest_partner_grace_deadline = -1;
+    for (int i = 0; i < CHORDIS_MAX_TRACKERS; i++) {
+        struct key_tracker *plain = &sm.chars[i];
+        if (!plain->in_use || !plain->awaiting_hold_commit) {
+            continue;
+        }
+        int64_t grace_deadline =
+            plain->released_ts + (int64_t)t->hold_after_partner_release_ms;
+        if (grace_deadline > latest_partner_grace_deadline) {
+            latest_partner_grace_deadline = grace_deadline;
+        }
+    }
+    if (latest_partner_grace_deadline > tt_ts) {
+        LOG_DBG("tapping_term fired: pos=%d deferred by partner grace until %lld",
+                t->position, (long long)latest_partner_grace_deadline);
+        return;
+    }
     LOG_DBG("tapping_term fired: pos=%d → TRK_HOLD", t->position);
     t->resolution = TRK_HOLD;
     struct zmk_behavior_binding_event ev = {
         .position  = t->position,
-        .timestamp = t->pressed_ts + t->tapping_term_ms,
+        .timestamp = tt_ts,
     };
     zmk_behavior_invoke_binding(&t->hold_binding, ev, true);
 
@@ -1956,7 +2021,7 @@ static void hold_commit_handler(struct k_work *work) {
     }
     plain->awaiting_hold_commit = false;
 
-    int64_t hold_ts = plain->released_ts + timing.hold_after_partner_release_ms;
+    int64_t hold_ts = plain->released_ts + plain->hold_commit_delay_ms;
     int resolved = 0;
 
     for (int i = 0; i < CHORDIS_MAX_TRACKERS; i++) {

@@ -50,8 +50,7 @@ struct chordis_timing_config {
     uint32_t sequential_threshold;
     uint32_t sequential_min_overlap_ms;
     /* Hold-tap globals. Per-key chordis_hold_config fields with value 0
-     * inherit these (see tracker_apply_hold). hold_after_partner_release_ms
-     * has no per-key override yet — it is consumed directly. */
+     * inherit these (see tracker_apply_hold). */
     uint32_t default_tapping_term_ms;
     uint32_t default_quick_tap_ms;
     uint32_t default_require_prior_idle_ms;
@@ -65,10 +64,14 @@ struct chordis_hold_config {
     uint32_t tapping_term_ms;                /* time to confirm hold */
     uint32_t quick_tap_ms;                   /* repeat-typing protection */
     /* require-prior-idle-ms (rolling-input protection).
-     * If non-zero, force this key to resolve as tap when another key was
+     * If non-zero, force this key to resolve as tap when any key was
      * released within this window prior to its press. 0 = inherit global
      * (timing.default_require_prior_idle_ms). */
     uint32_t require_prior_idle_ms;
+    /* Short grace period after a plain combo partner is released before an
+     * undecided peer commits to HOLD. 0 = inherit global
+     * (timing.hold_after_partner_release_ms). */
+    uint32_t hold_after_partner_release_ms;
     /* hold-required-key-positions (Slice G).
      * Pointer to a list of key positions that may act as hold partners.
      * Stricter than ZMK's hold-trigger-key-positions: if the first non-self

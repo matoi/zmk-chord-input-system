@@ -57,6 +57,18 @@ properties:
       default-require-prior-idle-ms (built-in fallback 0 = feature off).
       To explicitly disable per key while a non-zero global is
       configured, set the per-key value to 1.
+  hold-after-partner-release-ms:
+    type: int
+    default: 0
+    description: |
+      Short grace period after a plain combo partner is released before
+      this undecided hold-tap key commits to HOLD. This absorbs small
+      release-order jitter and may delay HOLD slightly past
+      tapping-term-ms when the partner release happens near that boundary,
+      but never makes HOLD commit earlier than tapping-term-ms. Keep it
+      much smaller than tapping-term-ms. Default 0 is the inherit sentinel:
+      the engine substitutes &cdis_config's hold-after-partner-release-ms
+      (built-in fallback 30 ms).
   hold-required-key-positions:
     type: array
     required: false
