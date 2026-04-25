@@ -184,8 +184,10 @@ static const struct behavior_driver_api behavior_cdis_driver_api = {
         .hold = {                                                                                  \
             .binding = { .behavior_dev = _NC_HOLD_DEV(n),                                          \
                          .param1 = _NC_HOLD_PARAM(n) },                                            \
-            .tapping_term_ms = DT_INST_PROP_OR(n, tapping_term_ms, 200),                           \
-            .quick_tap_ms    = DT_INST_PROP_OR(n, quick_tap_ms, 0),                                \
+            /* 0 = inherit from cdis_config global (resolved in engine). */                       \
+            .tapping_term_ms       = DT_INST_PROP_OR(n, tapping_term_ms, 0),                       \
+            .quick_tap_ms          = DT_INST_PROP_OR(n, quick_tap_ms, 0),                          \
+            .require_prior_idle_ms = DT_INST_PROP_OR(n, require_prior_idle_ms, 0),                 \
         },                                                                                         \
         .hold_required_positions_len = DT_INST_PROP_LEN(n, hold_required_key_positions),           \
         .hold_required_positions     = DT_INST_PROP(n, hold_required_key_positions),               \

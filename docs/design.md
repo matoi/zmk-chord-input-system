@@ -511,6 +511,80 @@ This keeps rolling protection intact while avoiding the bug where an HT could
 remain stuck in `TRK_UNDECIDED` forever after the original blocker had already
 been released.
 
+### Knob Interactions
+
+Per-key HT tuning is necessary in practice (home row mods need different
+values per finger). Whenever a new knob is added, two questions must be
+answered up front:
+
+1. **Anchor**: which key's value drives the decision?
+2. **Multi-key resolution**: when several keys with different values are
+   simultaneously involved, how is the conflict resolved?
+
+The guiding principle is **"a knob belongs to the HT key — it expresses
+the intent of the person who pressed that key."** Plain partners are
+just counterparties; their values (if any) do not override an HT's
+intent. This keeps reasoning local: each HT is decided against its own
+config, even when several HTs share a partner.
+
+Current and proposed knobs under this principle:
+
+| Knob | Anchor | Single-key behavior | Multi-HT resolution |
+|---|---|---|---|
+| `tapping-term-ms` | HT key | Own per-tracker timer | Each HT runs independently |
+| `quick-tap-ms` | HT key (vs. own prior release) | Per-position release history | No interaction |
+| `hold-required-key-positions` | HT key | First non-self partner must be in self's list | Each HT checks its own list against the partner; HT_A's list says nothing about HT_B |
+| `hold-after-partner-release-ms` | Global on `&cdis_config` (per-key not yet implemented) | Window after partner release before HOLD commits | Single global value — no multi-key resolution. When per-key is added, **take `max` across all HTs pending on the same plain release.** `min` would let the most aggressive HT yank decision away from a more lenient one — defeats per-key tuning. |
+| `require-prior-idle-ms` | HT key (anchored at own press) | Block lone HOLD if any key was released within N ms before this HT was pressed | Each HT independent. A still-undecided earlier HT is just a held key for this purpose |
+| `hold-while-undecided` (proposed) | HT key | Whether to emit modifier early during undecided window | Each HT opts in independently |
+| `retro-tap` (proposed) | HT key | Suppress lone-HOLD on tapping-term expiry | Each HT independent |
+
+When per-key `hold-after-partner-release-ms` is implemented later, its
+timer lives on the *plain partner tracker* (that is where the release
+event arrives), but the wait duration must be sourced from the HT side.
+When scheduling the timer, walk all HT-undecided trackers that could
+promote on this plain's release and use the longest configured window.
+If a later-arriving HT becomes pending *after* the timer was already
+scheduled, the engine must extend the wait if that HT's value exceeds
+the remaining time — otherwise a HT configured for a long combo window
+can be silently truncated by an earlier short-window peer.
+
+#### Inheritance: per-key → global → fallback
+
+For knobs with a meaningful global default (`tapping-term-ms`,
+`quick-tap-ms`, `require-prior-idle-ms`), values resolve in three tiers:
+
+1. Per-key DT property on the HT behavior, if non-zero.
+2. Global default on `&cdis_config`
+   (`default-tapping-term-ms`, `default-quick-tap-ms`,
+   `default-require-prior-idle-ms`).
+3. Hardcoded engine fallback (200 / 0 / 0 respectively).
+
+The per-key `0` value is the **inherit sentinel**. The YAML default for
+`tapping-term-ms`, `quick-tap-ms`, and `require-prior-idle-ms` are `0`,
+so a behavior that does not specify those properties automatically
+inherits the global. To explicitly disable `quick-tap-ms` or
+`require-prior-idle-ms` per key while a non-zero global is configured,
+set the per-key value to `1` (any non-zero value bypasses inheritance,
+and `1` is functionally a no-op for these millisecond windows).
+
+`hold-after-partner-release-ms` is **global only** for now (no per-key
+override) — it lives on `&cdis_config` and is consumed directly with a
+hardcoded fallback of 80 ms.
+
+Without tier 2, configuring 8–10 home row mods means repeating the same
+literal across every behavior; tier 2 keeps per-key tuning ergonomic
+while letting individual fingers override.
+
+Knobs whose value is intrinsically per-key (`hold-required-key-positions`,
+`hold-behavior` / `hold-param`) have no global default — they are
+inherently key-specific.
+
+The engine reads tier 2 once at init from the cdis_config DT node;
+runtime overrides for tests are exposed via
+`chordis_engine_set_globals()` (`CHORDIS_KEEP` to leave a field
+unchanged).
+
 ### Detailed Transitions
 
 #### IDLE State
@@ -1446,6 +1520,6 @@ OS ごとに Unicode 直接入力の方法は存在する（macOS の Unicode He
 3. **M3: Basic behavior** - 3-state machine (IDLE/CHAR_WAIT/THUMB_HELD), modifier passthrough, hold-tap 互換（dual passthrough）, レイヤー順序要件 ✅
 4. **M4: Full state machine** - 4-state (IDLE/CHAR_WAIT/CHAR_THUMB_WAIT/THUMB_HELD), 振り分け判定 (5.4.2)、逐次打鍵識別 (5.5.2)、multi-shift (up to 4)、THUMB_HELD watchdog、auto-off ✅
 5. **M5: Character-character combos** - Combo engine (`lookup_any_combo` / `lookup_shifted_combo` / `has_potential_chain`), DT-driven combo registration, hold detection for combo candidates, THUMB_CHAR_WAIT state, chained 3-key combos, naginata dakuten/handakuten refactor from grid shift to char+combo ✅
-6. **M6: Integrated hold-tap** - Hold-tap modifier support for combo candidate keys within nicola engine, including release-gap settle, per-position HT timers, rolling prior-plain protection, and passthrough/base-layer emission ✅
+6. **M6: Integrated hold-tap** - Hold-tap modifier support for combo candidate keys within nicola engine, including hold-after-partner-release commit, per-position HT timers, rolling prior-plain protection, and passthrough/base-layer emission ✅
 7. **M7: Keymap templates** - Pre-built dtsi for NICOLA standard, naginata, and shin-geta-based layouts
 8. **M8: Documentation & testing** - README, usage guide, cross-platform testing

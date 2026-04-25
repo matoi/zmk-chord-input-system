@@ -28,16 +28,35 @@ properties:
       hold-behavior is set.
   tapping-term-ms:
     type: int
-    default: 200
+    default: 0
     description: |
       Time in ms before a held key resolves to its hold action. Only used
-      when hold-behavior is set.
+      when hold-behavior is set. The default value 0 is an inherit
+      sentinel: the engine substitutes &cdis_config's
+      default-tapping-term-ms (built-in fallback 200 ms). Set explicitly
+      to override per key.
   quick-tap-ms:
     type: int
     default: 0
     description: |
       Time in ms within which a repeated press forces tap (repeat-typing
-      protection). Only used when hold-behavior is set.
+      protection). Only used when hold-behavior is set. The default
+      value 0 is an inherit sentinel: the engine substitutes
+      &cdis_config's default-quick-tap-ms (built-in fallback 0 = feature
+      off). To explicitly disable per key while a non-zero global is
+      configured, set the per-key value to 1.
+  require-prior-idle-ms:
+    type: int
+    default: 0
+    description: |
+      Force this key to resolve as tap if any key was released within
+      this many milliseconds before its press. Targets rolling typing
+      where an HT key gets caught mid-stream and would otherwise promote
+      to HOLD on tapping-term. Default 0 is the inherit
+      sentinel: the engine substitutes &cdis_config's
+      default-require-prior-idle-ms (built-in fallback 0 = feature off).
+      To explicitly disable per key while a non-zero global is
+      configured, set the per-key value to 1.
   hold-required-key-positions:
     type: array
     required: false

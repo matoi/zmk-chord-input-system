@@ -24,6 +24,41 @@ properties:
     description: |
       Minimum overlap time (t2) in ms. If t2 is below this threshold,
       the input is always judged as sequential regardless of t1.
+  default-tapping-term-ms:
+    type: int
+    default: 200
+    description: |
+      Global default for hold-tap tapping-term-ms. Applied when a
+      character behavior has hold-behavior set but leaves tapping-term-ms
+      at the inherit sentinel (0). Lets multi-key home-row-mod setups
+      tune all keys at once.
+  default-quick-tap-ms:
+    type: int
+    default: 0
+    description: |
+      Global default for hold-tap quick-tap-ms (repeat-typing protection
+      window). Applied when a character behavior has hold-behavior set
+      but leaves quick-tap-ms at the inherit sentinel (0). To explicitly
+      disable per key while a non-zero global is configured, set the
+      per-key value to 1.
+  default-require-prior-idle-ms:
+    type: int
+    default: 0
+    description: |
+      Global default for hold-tap require-prior-idle-ms. Applied when a
+      character behavior has hold-behavior set but leaves
+      require-prior-idle-ms at the inherit sentinel (0). The default 0
+      keeps the feature opt-in (legacy behavior).
+  hold-after-partner-release-ms:
+    type: int
+    default: 80
+    description: |
+      Global window (ms) after a plain combo partner is released, during
+      which an HT-undecided character key may still flip to combo by
+      releasing within the window. If no HT releases in time, the HT
+      commits to HOLD and the partner is replayed via the base layer.
+      Shorter values bias toward fast HOLD commit (HT-friendly); longer
+      values bias toward combo capture (tap-friendly).
   auto-off-keys:
     type: array
     description: |

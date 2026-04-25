@@ -1,7 +1,7 @@
 /*
  * Host test stub for <zmk/keymap.h>.
  *
- * Slice D-1.5: settle_handler queries the base-layer binding at the plain
+ * Slice D-1.5: hold_commit_handler queries the base-layer binding at the plain
  * tracker's position to emit Cmd+X-style passthrough. The mock implementation
  * lives in mock_runtime.c — tests populate it via mock_set_keymap_binding().
  */

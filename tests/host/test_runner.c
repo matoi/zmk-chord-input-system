@@ -52,6 +52,10 @@ static void test_state_cleanup(void) {
     chordis_on_thumb_released(CHORDIS_SHIFT_1, ev);
     chordis_on_thumb_released(CHORDIS_SHIFT_2, ev);
     chordis_on_thumb_released(CHORDIS_SHIFT_3, ev);
+    /* Restore HT globals to engine static defaults so tests that mutate
+     * them never leak into subsequent cases. */
+    chordis_engine_set_globals(200, 0, 80);
+    chordis_engine_set_require_prior_idle_global(0);
 }
 
 #define TEST_BEGIN(name) do {                                \
@@ -694,21 +698,21 @@ static void test_holdtap_combo_candidate_hold(void) {
 }
 
 /*
- * 18. Slice D-1: HT + combo partner, both released within release-gap
- *     → combo "hyu" wins (HT release cancels settle, eager combo resolve).
+ * 18. Slice D-1: HT + combo partner, both released within hold-after-partner-release window
+ *     → combo "hyu" wins (HT release cancels hold-commit, eager combo resolve).
  *
  *     Sequence: press HI[HT], press YU, release YU, release HI.
- *     YU release schedules settle (HT undecided + plain release).
+ *     YU release schedules hold-commit (HT undecided + plain release).
  *     HI release runs combo_pending path: find_ht_undecided excludes
  *     released, YU is plain → no HT undecided remaining → combo resolves
- *     immediately. tracker_free(YU) cancels its settle_timer.
+ *     immediately. tracker_free(YU) cancels its hold_commit_timer.
  */
 static void test_holdtap_combo_partner_combo_wins(void) {
     TEST_BEGIN("D-1: HT + partner, both released → combo");
     press_char_ht(KANA_HI, 10, 0, &hold_lshft_200);
     press_char(KANA_YU, 11, 30);
-    release_char(11, 50);   /* plain released first → settle scheduled */
-    CHECK(mock_event_count == 0, "no output yet (settle pending)");
+    release_char(11, 50);   /* plain released first → hold-commit scheduled */
+    CHECK(mock_event_count == 0, "no output yet (hold-commit pending)");
     release_char(10, 60);   /* HT released → eager combo resolve */
     expect_romaji("hyu");
     CHECK(!chordis_is_hold_active(), "no hold activated");
@@ -716,24 +720,24 @@ static void test_holdtap_combo_partner_combo_wins(void) {
 }
 
 /*
- * 19. Slice D-1: HT + combo partner, only plain released, settle fires
+ * 19. Slice D-1: HT + combo partner, only plain released, hold-commit fires
  *     while HT still held → HT → HOLD, plain dropped (passthrough placeholder).
  *
- *     Verifies BIND_PRESS for hold binding fires from settle_handler.
+ *     Verifies BIND_PRESS for hold binding fires from hold_commit_handler.
  *     Verifies BIND_RELEASE on HT release.
  */
-static void test_holdtap_combo_partner_settle_to_hold(void) {
-    TEST_BEGIN("D-1: HT + partner, settle fires → HOLD + base passthrough");
-    /* D-1.5: register base-layer binding for plain B's position so settle
+static void test_holdtap_combo_partner_hold_commit_to_hold(void) {
+    TEST_BEGIN("D-1: HT + partner, hold-commit fires → HOLD + base passthrough");
+    /* D-1.5: register base-layer binding for plain B's position so hold-commit
      * can emit the passthrough press+release. */
     mock_set_keymap_binding(11, "kp_dummy", BASE_BINDING_PARAM);
     press_char_ht(KANA_HI, 10, 0, &hold_lshft_200);
     press_char(KANA_YU, 11, 30);
-    release_char(11, 50);  /* plain released → settle scheduled (80ms) */
+    release_char(11, 50);  /* plain released → hold-commit scheduled (80ms) */
     CHECK(mock_event_count == 0, "no output yet");
 
     /* Settle (delay 80) fires before tapping_term (200) and char_timeout (100). */
-    CHECK(mock_fire_pending_timer(), "settle should fire");
+    CHECK(mock_fire_pending_timer(), "hold-commit should fire");
     /* Expect: HT BIND_PRESS, base BIND_PRESS, base BIND_RELEASE */
     CHECK(mock_event_count == 3, "expected 3 events, got %d", mock_event_count);
     CHECK(mock_event_log[0].kind  == MOCK_EVT_BINDING_PRESS, "[0] BIND_PRESS");
@@ -742,7 +746,7 @@ static void test_holdtap_combo_partner_settle_to_hold(void) {
     CHECK(mock_event_log[1].value == BASE_BINDING_PARAM,       "[1] base binding");
     CHECK(mock_event_log[2].kind  == MOCK_EVT_BINDING_RELEASE, "[2] base BIND_RELEASE");
     CHECK(mock_event_log[2].value == BASE_BINDING_PARAM,       "[2] base binding");
-    CHECK(chordis_is_hold_active(), "hold should be active after settle");
+    CHECK(chordis_is_hold_active(), "hold should be active after hold-commit");
 
     /* Release HT — should fire BIND_RELEASE and return to IDLE. */
     release_char(10, 500);
@@ -755,7 +759,7 @@ static void test_holdtap_combo_partner_settle_to_hold(void) {
 
 /*
  * 20. Slice D-1: HT released before partner → combo resolves immediately.
- *     This is the existing eager combo path; release-gap doesn't apply
+ *     This is the existing eager combo path; hold-after-partner-release window doesn't apply
  *     because the released tracker IS the HT.
  */
 static void test_holdtap_combo_partner_ht_first(void) {
@@ -782,22 +786,22 @@ static const struct chordis_hold_config hold_lctl_200 = {
 
 /*
  * 21. Slice D-2: two HT-UNDECIDED keys coexist, plain combo partner B
- *     released → settle resolves BOTH HTs to HOLD (multi-mod, e.g. Cmd+Shift).
+ *     released → hold-commit resolves BOTH HTs to HOLD (multi-mod, e.g. Cmd+Shift).
  *
  *     HI[HT] → KA[HT] (no combo with HI) → YU[plain combo partner of HI]
- *     → release YU → settle fires → both HTs become HOLD.
+ *     → release YU → hold-commit fires → both HTs become HOLD.
  */
-static void test_holdtap_multi_mod_settle(void) {
-    TEST_BEGIN("D-2: two HT held, settle resolves both → HOLD + base passthrough");
+static void test_holdtap_multi_mod_hold_commit(void) {
+    TEST_BEGIN("D-2: two HT held, hold-commit resolves both → HOLD + base passthrough");
     /* D-1.5: register base-layer binding for plain B's position. */
     mock_set_keymap_binding(12, "kp_dummy", BASE_BINDING_PARAM);
     press_char_ht(KANA_HI, 10,  0, &hold_lshft_200);  /* HT1 */
     press_char_ht(KANA_KA, 11,  5, &hold_lctl_200);   /* HT2 — KA non-combo */
     press_char(KANA_YU, 12, 10);                       /* plain combo partner of HI */
-    release_char(12, 50);                              /* settle scheduled (80ms) */
+    release_char(12, 50);                              /* hold-commit scheduled (80ms) */
     CHECK(mock_event_count == 0, "no output yet");
 
-    CHECK(mock_fire_pending_timer(), "settle should fire");
+    CHECK(mock_fire_pending_timer(), "hold-commit should fire");
 
     /* Expect: 2 HT BIND_PRESS + 1 base BIND_PRESS + 1 base BIND_RELEASE = 4 events. */
     int ht_presses = 0;
@@ -851,17 +855,17 @@ static void test_holdtap_multi_mod_both_tap(void) {
 }
 
 /*
- * 23. Slice D-1.5: settle with no base-layer binding registered for plain B
+ * 23. Slice D-1.5: hold-commit with no base-layer binding registered for plain B
  *     should still resolve HT → HOLD without crashing or emitting passthrough.
  */
-static void test_holdtap_settle_no_base_binding(void) {
-    TEST_BEGIN("D-1.5: settle with no base binding → HT only");
+static void test_holdtap_hold_commit_no_base_binding(void) {
+    TEST_BEGIN("D-1.5: hold-commit with no base binding → HT only");
     /* Note: no mock_set_keymap_binding() — keymap is empty after mock_reset */
     press_char_ht(KANA_HI, 10, 0, &hold_lshft_200);
     press_char(KANA_YU, 11, 30);
     release_char(11, 50);
 
-    CHECK(mock_fire_pending_timer(), "settle should fire");
+    CHECK(mock_fire_pending_timer(), "hold-commit should fire");
     /* Only the HT BIND_PRESS — no base passthrough */
     CHECK(mock_event_count == 1, "expected 1 event, got %d", mock_event_count);
     CHECK(mock_event_log[0].kind  == MOCK_EVT_BINDING_PRESS, "[0] BIND_PRESS");
@@ -875,22 +879,226 @@ static void test_holdtap_settle_no_base_binding(void) {
 
 /*
  * 24. Slice D-3a: HT released after plain partner B was released but BEFORE
- *     the settle timer fired. The release-gap window should let HT escape
+ *     the hold-commit timer fired. The hold-after-partner-release window should let HT escape
  *     to combo resolution rather than HOLD. Verifies tracker_free cancels
- *     the dangling settle timer (no spurious settle fire after combo).
+ *     the dangling hold-commit timer (no spurious hold-commit fire after combo).
  */
-static void test_holdtap_ht_release_settle_recovery(void) {
-    TEST_BEGIN("D-3a: HT released within settle gap → combo");
+static void test_holdtap_ht_release_hold_commit_recovery(void) {
+    TEST_BEGIN("D-3a: HT released within hold-commit gap → combo");
     press_char_ht(KANA_HI, 10, 0, &hold_lshft_200);
     press_char(KANA_YU, 11, 30);
-    release_char(11, 50);   /* plain released → settle scheduled (fires at 130) */
-    CHECK(mock_event_count == 0, "no output yet (settle pending)");
-    release_char(10, 70);   /* HT released BEFORE settle fires → combo */
+    release_char(11, 50);   /* plain released → hold-commit scheduled (fires at 130) */
+    CHECK(mock_event_count == 0, "no output yet (hold-commit pending)");
+    release_char(10, 70);   /* HT released BEFORE hold-commit fires → combo */
     expect_romaji("hyu");
     CHECK(!chordis_is_hold_active(), "no hold activated");
-    /* The settle timer should have been cancelled by tracker_free.
+    /* The hold-commit timer should have been cancelled by tracker_free.
      * Firing pending should be a no-op (return false). */
-    CHECK(!mock_fire_pending_timer(), "no stray settle timer should remain");
+    CHECK(!mock_fire_pending_timer(), "no stray hold-commit timer should remain");
+    TEST_END();
+}
+
+/*
+ * Globals (cdis_config fallback chain):
+ *
+ *   per-key tapping_term_ms == 0  → inherit timing.default_tapping_term_ms
+ *   per-key quick_tap_ms    == 0  → inherit timing.default_quick_tap_ms
+ *   timing.hold_after_partner_release_ms is consumed directly.
+ */
+
+/* Hold config with sentinel-0 timing fields → engine substitutes globals. */
+static const struct chordis_hold_config hold_lshft_inherit = {
+    .binding = { .behavior_dev = "hold_dummy",
+                 .param1 = HOLD_BINDING_PARAM, .param2 = 0 },
+    .tapping_term_ms = 0,  /* inherit */
+    .quick_tap_ms    = 0,  /* inherit */
+};
+
+/* Per-key inherits → uses default_tapping_term_ms (150). */
+static void test_holdtap_globals_inherit_tapping_term(void) {
+    TEST_BEGIN("globals: per-key tt=0 → inherits default_tapping_term_ms");
+    chordis_engine_set_globals(150, CHORDIS_KEEP, CHORDIS_KEEP);
+    press_char_ht(KANA_KA, 10, 0, &hold_lshft_inherit);
+    CHECK(mock_fire_pending_timer(), "char_timeout should fire first");
+    CHECK(!chordis_is_hold_active(), "no hold before inherited tapping term");
+    CHECK(mock_fire_pending_timer(), "inherited tapping_term timer should fire");
+    CHECK(chordis_is_hold_active(), "HOLD active via inherited 150ms tapping term");
+    release_char(10, 300);
+    TEST_END();
+}
+
+/* With no DT-provided global override, the engine fallback remains 200ms. */
+static void test_holdtap_globals_fallback_tapping_term_200(void) {
+    TEST_BEGIN("globals: fallback default_tapping_term_ms is 200");
+    press_char_ht(KANA_KA, 10, 0, &hold_lshft_inherit);
+    CHECK(mock_fire_pending_timer(), "char_timeout should fire first");
+    CHECK(!chordis_is_hold_active(), "no hold before fallback tapping term");
+    CHECK(mock_fire_pending_timer(), "fallback tapping_term timer should fire");
+    CHECK(chordis_is_hold_active(), "HOLD active via fallback 200ms tapping term");
+    release_char(10, 300);
+    TEST_END();
+}
+
+/* Per-key explicit value > 0 → wins over global. */
+static void test_holdtap_globals_per_key_overrides(void) {
+    TEST_BEGIN("globals: per-key tt explicit overrides global");
+    chordis_engine_set_globals(50 /* short global */, CHORDIS_KEEP, CHORDIS_KEEP);
+    /* hold_lshft_200 has tapping_term_ms=200 explicitly — must beat the
+     * 50ms global. The lone-hold path fires char_timeout first (extends),
+     * then tapping_term. */
+    press_char_ht(KANA_KA, 10, 0, &hold_lshft_200);
+    CHECK(mock_fire_pending_timer(), "char_timeout should fire (extend)");
+    CHECK(mock_event_count == 0, "no output yet");
+    CHECK(mock_fire_pending_timer(), "tapping_term timer should fire");
+    CHECK(chordis_is_hold_active(), "HOLD active (per-key 200 won)");
+    release_char(10, 300);
+    TEST_END();
+}
+
+/* Global hold_after_partner_release_ms is consumed when scheduling the
+ * hold-commit timer. Verify a non-default global value flows through. */
+static void test_holdtap_globals_hold_after_partner_release(void) {
+    TEST_BEGIN("globals: hold_after_partner_release_ms drives commit timer");
+    chordis_engine_set_globals(CHORDIS_KEEP, CHORDIS_KEEP, 40 /* short */);
+    mock_set_keymap_binding(11, "kp_dummy", BASE_BINDING_PARAM);
+    press_char_ht(KANA_HI, 10, 0, &hold_lshft_200);
+    press_char(KANA_YU, 11, 30);
+    release_char(11, 50);  /* schedules hold-commit at 40ms (well before tt=200) */
+    /* The commit timer must fire (and before tapping_term). */
+    CHECK(mock_fire_pending_timer(), "hold-commit timer should fire");
+    CHECK(chordis_is_hold_active(), "HOLD activated via short global window");
+    release_char(10, 500);
+    TEST_END();
+}
+
+/* Per-key quick_tap_ms = 0 inherits a non-zero global → repeat suppression
+ * applies. */
+static void test_holdtap_globals_inherit_quick_tap(void) {
+    TEST_BEGIN("globals: per-key qt=0 inherits default_quick_tap_ms");
+    chordis_engine_set_globals(CHORDIS_KEEP, 150 /* qt window */, CHORDIS_KEEP);
+    press_char_ht(KANA_HI, 10, 0, &hold_lshft_inherit);
+    release_char(10, 20);
+    expect_romaji("hi");
+
+    /* Re-press 60ms after release (< inherited qt=150). Quick-tap
+     * suppression must drop has_hold even past tapping_term. */
+    press_char_ht(KANA_HI, 10, 80, &hold_lshft_inherit);
+    for (int i = 0; i < 4 && mock_fire_pending_timer(); i++) {
+        if (chordis_is_hold_active()) break;
+    }
+    CHECK(!chordis_is_hold_active(), "inherited qt must suppress hold");
+    release_char(10, 350);
+    TEST_END();
+}
+
+/*
+ * require-prior-idle-ms: rolling-input gate.
+ *
+ *   When configured (>0), an HT key pressed within N ms after any key's
+ *   release loses its hold capability and resolves as plain tap.
+ *   Independent from the prior-plain blocker (which only fires while a
+ *   plain key is still physically held).
+ */
+
+/* HT config that opts into the prior-idle gate explicitly (per-key 100). */
+static const struct chordis_hold_config hold_lshft_prior_idle_100 = {
+    .binding = { .behavior_dev = "hold_dummy",
+                 .param1 = HOLD_BINDING_PARAM, .param2 = 0 },
+    .tapping_term_ms       = 200,
+    .quick_tap_ms          = 0,
+    .require_prior_idle_ms = 100,
+};
+
+/* Helper: press + release a non-combo char, fire its char_timeout to
+ * emit, ending in IDLE with last_key_release_ts = release_ts. */
+static void prior_idle_seed_release(int64_t release_ts) {
+    press_char(KANA_KA, 9, 0);
+    release_char(9, release_ts);
+    CHECK(mock_fire_pending_timer(), "char_timeout fires");
+    expect_romaji("ka");
+}
+
+/* Press after a sufficiently long idle gap → HOLD allowed. */
+static void test_holdtap_prior_idle_gap_satisfied(void) {
+    TEST_BEGIN("prior-idle: gap >= window → HOLD allowed");
+    prior_idle_seed_release(10);
+    /* Press HT 300ms later — gap 290 ms >> 100 ms gate. */
+    press_char_ht(KANA_KE, 10, 300, &hold_lshft_prior_idle_100);
+    CHECK(mock_fire_pending_timer(), "char_timeout fires (extends)");
+    CHECK(mock_fire_pending_timer(), "tapping_term fires");
+    CHECK(chordis_is_hold_active(), "HOLD activated (gap satisfied)");
+    release_char(10, 800);
+    TEST_END();
+}
+
+/* Press within the gate → forced tap. */
+static void test_holdtap_prior_idle_gap_violated(void) {
+    TEST_BEGIN("prior-idle: gap < window → forced tap");
+    prior_idle_seed_release(50);
+    /* Gap 30 ms < 100 ms gate. */
+    press_char_ht(KANA_KE, 10, 80, &hold_lshft_prior_idle_100);
+    for (int i = 0; i < 4 && mock_fire_pending_timer(); i++) {
+        if (chordis_is_hold_active()) break;
+    }
+    CHECK(!chordis_is_hold_active(), "prior-idle must suppress lone HOLD");
+    release_char(10, 500);
+    TEST_END();
+}
+
+/* The idle gate is based on the most recent release globally, including the
+ * same physical key. This is distinct from quick-tap, which is position
+ * history and can be disabled independently. */
+static void test_holdtap_prior_idle_same_key_release_counts(void) {
+    TEST_BEGIN("prior-idle: same-key prior release counts");
+    press_char_ht(KANA_KE, 10, 0, &hold_lshft_prior_idle_100);
+    release_char(10, 20);
+    CHECK(mock_fire_pending_timer(), "char_timeout fires");
+    expect_romaji("ke");
+
+    /* Gap 60 ms < 100 ms gate. quick_tap_ms is 0, so only prior-idle can
+     * suppress HOLD here. */
+    press_char_ht(KANA_KE, 10, 80, &hold_lshft_prior_idle_100);
+    for (int i = 0; i < 4 && mock_fire_pending_timer(); i++) {
+        if (chordis_is_hold_active()) break;
+    }
+    CHECK(!chordis_is_hold_active(), "same-key prior release must suppress HOLD");
+    release_char(10, 500);
+    TEST_END();
+}
+
+/* Per-key value (50) beats global (200) and allows HOLD at 80ms gap. */
+static void test_holdtap_prior_idle_per_key_overrides(void) {
+    TEST_BEGIN("prior-idle: per-key explicit value beats global");
+    chordis_engine_set_require_prior_idle_global(200 /* large global */);
+    static const struct chordis_hold_config hold_pi_50 = {
+        .binding = { .behavior_dev = "hold_dummy",
+                     .param1 = HOLD_BINDING_PARAM, .param2 = 0 },
+        .tapping_term_ms       = 200,
+        .quick_tap_ms          = 0,
+        .require_prior_idle_ms = 50,
+    };
+    prior_idle_seed_release(10);
+    /* Gap 90 ms: 50 (per-key) <= 90 < 200 (global). Per-key wins → allow. */
+    press_char_ht(KANA_KE, 10, 100, &hold_pi_50);
+    CHECK(mock_fire_pending_timer(), "char_timeout fires");
+    CHECK(mock_fire_pending_timer(), "tapping_term fires");
+    CHECK(chordis_is_hold_active(), "HOLD allowed (per-key 50 won)");
+    release_char(10, 500);
+    TEST_END();
+}
+
+/* Per-key 0 inherits global → forced tap when global is non-zero. */
+static void test_holdtap_prior_idle_inherits_global(void) {
+    TEST_BEGIN("prior-idle: per-key=0 inherits non-zero global");
+    chordis_engine_set_require_prior_idle_global(150);
+    prior_idle_seed_release(30);
+    /* Gap 70 ms < inherited 150 ms → forced tap. */
+    press_char_ht(KANA_KE, 10, 100, &hold_lshft_inherit);
+    for (int i = 0; i < 4 && mock_fire_pending_timer(); i++) {
+        if (chordis_is_hold_active()) break;
+    }
+    CHECK(!chordis_is_hold_active(), "inherited gate must suppress HOLD");
+    release_char(10, 500);
     TEST_END();
 }
 
@@ -1101,7 +1309,7 @@ static void test_holdtap_prior_plain_clears_before_tapping_term(void) {
 
 /*
  * 29c. Prior plain overlap + later allowed partner: the blocked HT must
- *      still be able to resolve via the existing settle path.
+ *      still be able to resolve via the existing hold-commit path.
  */
 static void test_holdtap_prior_plain_later_partner_allows_hold(void) {
     TEST_BEGIN("prior plain overlap still allows later partner-driven HOLD");
@@ -1112,11 +1320,11 @@ static void test_holdtap_prior_plain_later_partner_allows_hold(void) {
     expect_romaji("to");
     press_char(KANA_YU,    20, 40);              /* later combo partner */
 
-    CHECK(!chordis_is_hold_active(), "still no hold before settle");
+    CHECK(!chordis_is_hold_active(), "still no hold before hold-commit");
 
     release_char(20, 80);                        /* later partner released first */
-    CHECK(mock_fire_pending_timer(), "settle fires");
-    CHECK(chordis_is_hold_active(), "hold should activate via settle");
+    CHECK(mock_fire_pending_timer(), "hold-commit fires");
+    CHECK(chordis_is_hold_active(), "hold should activate via hold-commit");
 
     release_char(10, 300);
     CHECK(!chordis_is_hold_active(), "hold cleared on HT release");
@@ -1201,7 +1409,7 @@ static void test_holdtap_prior_hold_does_not_block_new_hold(void) {
  *      it carries a KANA_HANDAKUTEN face and therefore participates in combo
  *      lookups. Once that older plain key is physically released, the later
  *      HT must be free to lone-promote on tapping_term; the prior key must
- *      not drive settle or leave the HT permanently blocked.
+ *      not drive hold-commit or leave the HT permanently blocked.
  */
 static void test_holdtap_prior_combo_marker_key_release_unblocks_hold(void) {
     TEST_BEGIN("prior combo-marker key release unblocks later HT hold");
@@ -1273,7 +1481,7 @@ static void test_holdtap_hrkp_lone_hold(void) {
  */
 static void test_holdtap_hrkp_allowed_partner(void) {
     TEST_BEGIN("G: hrkp allowed partner → HOLD activates");
-    /* Register base-layer binding for the allowed partner so settle path
+    /* Register base-layer binding for the allowed partner so hold-commit path
      * can produce the passthrough. Use a non-combo-candidate kana for B. */
     mock_set_keymap_binding(20, "kp_dummy", BASE_BINDING_PARAM);
     press_char_ht(KANA_KA, 10, 0,  &hold_lshft_hrkp);
@@ -1302,7 +1510,7 @@ static void test_holdtap_hrkp_denied_partner(void) {
     TEST_BEGIN("G: hrkp non-allowed partner → forced tap, no HOLD");
     press_char_ht(KANA_KA, 10, 0,  &hold_lshft_hrkp);
     press_char(KANA_TO,    21, 30);   /* pos 21 NOT in allowed list */
-    /* Drain any timers — neither hold-binding press nor settle should occur. */
+    /* Drain any timers — neither hold-binding press nor hold-commit should occur. */
     for (int i = 0; i < 6 && mock_fire_pending_timer(); i++) {}
     CHECK(!chordis_is_hold_active(), "hold must not activate (denied partner)");
     /* Both keys release; expected output is "ka" then "to" (or whatever the
@@ -1777,12 +1985,22 @@ int main(int argc, char **argv) {
     test_holdtap_hold();
     test_holdtap_combo_candidate_hold();
     test_holdtap_combo_partner_combo_wins();
-    test_holdtap_combo_partner_settle_to_hold();
+    test_holdtap_combo_partner_hold_commit_to_hold();
     test_holdtap_combo_partner_ht_first();
-    test_holdtap_multi_mod_settle();
+    test_holdtap_multi_mod_hold_commit();
     test_holdtap_multi_mod_both_tap();
-    test_holdtap_settle_no_base_binding();
-    test_holdtap_ht_release_settle_recovery();
+    test_holdtap_hold_commit_no_base_binding();
+    test_holdtap_ht_release_hold_commit_recovery();
+    test_holdtap_globals_inherit_tapping_term();
+    test_holdtap_globals_fallback_tapping_term_200();
+    test_holdtap_globals_per_key_overrides();
+    test_holdtap_globals_hold_after_partner_release();
+    test_holdtap_globals_inherit_quick_tap();
+    test_holdtap_prior_idle_gap_satisfied();
+    test_holdtap_prior_idle_gap_violated();
+    test_holdtap_prior_idle_same_key_release_counts();
+    test_holdtap_prior_idle_per_key_overrides();
+    test_holdtap_prior_idle_inherits_global();
     test_holdtap_chain_combo_with_ht();
     test_holdtap_thumb_within_timeout();
     test_holdtap_thumb_after_timeout();

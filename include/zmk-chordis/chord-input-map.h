@@ -49,8 +49,9 @@
  * engine resolves tap vs hold internally so combos still work on the same key.
  *
  * CHORD_INPUT_BEHAVIOR_HT(name, unshifted, shift0, shift1, hold_bhv, hold_param)
- *   3-face char + hold action. tapping-term-ms defaults to 200, quick-tap-ms
- *   defaults to 0 (set via the YAML binding). Example:
+ *   3-face char + hold action. Timing fields are omitted, so they inherit
+ *   &cdis_config defaults (effective fallback: tapping-term-ms 200,
+ *   quick-tap-ms 0). Example:
  *
  *     CHORD_INPUT_BEHAVIOR_HT(si_lshft, KANA_SI, KANA_A, KANA_ZI, &kp, LSHFT)
  *

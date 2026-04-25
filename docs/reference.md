@@ -231,6 +231,33 @@ some_layer {
 };
 ```
 
+## Hold-Tap グローバル設定
+
+Hold-Tap のタイミング系プロパティは `&cdis_config` にグローバル既定値を持つ。各 behavior 側で値を inherit sentinel `0` のままにすると、グローバル値が適用される。home row mods のように複数キーで同じ値を使うときに、毎回書く必要がなくなる。
+
+```dts
+&cdis_config {
+    default-tapping-term-ms        = <180>;
+    default-quick-tap-ms           = <120>;
+    default-require-prior-idle-ms  = <100>;
+    hold-after-partner-release-ms  = <60>;
+};
+```
+
+各 knob の解決順:
+
+1. behavior 側の per-key 値（非 0 のとき）
+2. `&cdis_config` のグローバル既定値
+3. ビルトインの fallback（`default-tapping-term-ms = 200`, `default-quick-tap-ms = 0`, `default-require-prior-idle-ms = 0`, `hold-after-partner-release-ms = 80`）
+
+`hold-after-partner-release-ms` は、plain combo partner が離されてから HT 未確定キーが combo へ転ぶ猶予時間（ms）。短いほど HOLD 確定が早く（HT 寄り）、長いほど combo を拾いやすい（tap 寄り）。
+
+`hold-after-partner-release-ms` は現状 per-key の上書き不可。per-key で上書きできるのは `tapping-term-ms`、`quick-tap-ms`、`require-prior-idle-ms`。
+
+グローバルで `quick-tap-ms` を有効にしたまま、特定キーだけ無効化したいときは、そのキーに `<1>` を指定する（非 0 値は inherit を抑止し、1 ms は repeat protection としては実質無効）。
+
+`require-prior-idle-ms` は、直前のキー release から指定 ms 未満で押された HT キーを tap に固定する rolling input 対策。直前 release は同じ物理キーでも対象になる。グローバルで有効にしたまま特定キーだけ無効化したい場合は、そのキーに `<1>` を指定する。
+
 ## Combo Table
 
 薙刀式は、preset include によって combo table を自動で含む。

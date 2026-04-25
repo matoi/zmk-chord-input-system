@@ -41,7 +41,7 @@ void mock_reset(void);
 
 #define MOCK_KEYMAP_SIZE 64
 
-/* Register a base-layer binding for a given position. The settle_handler
+/* Register a base-layer binding for a given position. The hold_commit_handler
  * looks this up via zmk_keymap_get_layer_binding_at_idx() to emit the
  * passthrough press+release for the plain combo partner B. */
 void mock_set_keymap_binding(uint8_t position, const char *behavior_dev,

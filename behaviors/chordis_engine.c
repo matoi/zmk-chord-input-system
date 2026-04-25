@@ -29,7 +29,7 @@
 #include <zmk/keymap.h>
 /* zmk/keymap.h provides:
  *   zmk_keymap_layer_default()
- *   zmk_keymap_get_layer_binding_at_idx()  — used in settle_handler (D-1.5) */
+ *   zmk_keymap_get_layer_binding_at_idx()  — used in hold_commit_handler (D-1.5) */
 #include <zmk/event_manager.h>
 #include <zmk/events/keycode_state_changed.h>
 #include <zmk-chordis/chordis_engine.h>
@@ -43,7 +43,17 @@ static struct chordis_timing_config timing = {
     .timeout_ms = 100,
     .sequential_threshold = 2,
     .sequential_min_overlap_ms = 20,
+    .default_tapping_term_ms = 200,
+    .default_quick_tap_ms    = 0,
+    .default_require_prior_idle_ms = 0,
+    .hold_after_partner_release_ms = 80,
 };
+
+/* Most recent release timestamp across char + thumb trackers. Used by
+ * require-prior-idle-ms gating: an HT pressed within this window after
+ * the previous release is forced to tap. -1 means "no prior release yet
+ * in this session" (and therefore always satisfies the gate). */
+static int64_t last_key_release_ts = -1;
 
 /* ── Auto-off configuration ──────────────────────────────── */
 
@@ -122,19 +132,20 @@ struct key_tracker {
     struct k_work_delayable       tapping_term_timer;
     bool                          tapping_term_timer_inited;
 
-    /* Release-gap balanced resolution (Slice D-1).
+    /* Hold-after-partner-release balanced resolution (Slice D-1).
      * Set when a plain combo partner is released while an HT-UNDECIDED
-     * tracker is still held. The settle timer waits release_gap_ms for
-     * the HT to also be released (→ combo) or fires (→ HT becomes HOLD). */
-    bool                          awaiting_settle;
+     * tracker is still held. The hold_commit_timer waits
+     * hold_after_partner_release_ms for the HT to also be released
+     * (→ combo) or fires (→ HT becomes HOLD). */
+    bool                          awaiting_hold_commit;
     int64_t                       released_ts;
-    struct k_work_delayable       settle_timer;
-    bool                          settle_timer_inited;
+    struct k_work_delayable       hold_commit_timer;
+    bool                          hold_commit_timer_inited;
 
     /* Snapshot taken when this HT key was pressed: true if a plain
      * (non-HT, non-HOLD) tracker was already active. Such a tracker must
      * not lone-promote to HOLD on tapping_term alone; only post-press
-     * partners may still drive combo/settle resolution. */
+     * partners may still drive combo / hold-commit resolution. */
     bool                          blocked_by_prior_plain;
 
     /* hold-required-key-positions gating (Slice G).
@@ -153,7 +164,9 @@ struct key_tracker {
 /* Release-gap window for HT vs combo partner balancing (Slice D-1).
  * When the plain combo partner B is released while HT-UNDECIDED A is held,
  * we wait this many ms for A's release before deciding combo vs hold. */
-#define CHORDIS_RELEASE_GAP_MS 80
+/* Wait window after a plain combo partner is released before the engine
+ * commits an HT-undecided peer to HOLD. Sourced from
+ * timing.hold_after_partner_release_ms (cdis_config global; default 80 ms). */
 
 /* ── Singleton state machine ──────────────────────────────── */
 
@@ -353,7 +366,7 @@ static int64_t quick_tap_lookup(uint32_t position) {
 /* ── Tracker helpers ──────────────────────────────────────── */
 
 static void tapping_term_handler(struct k_work *work);
-static void settle_handler(struct k_work *work);
+static void hold_commit_handler(struct k_work *work);
 static struct key_tracker *tracker_find_by_position(uint32_t position);
 
 /** Allocate a free tracker slot. Returns NULL if all slots are in use. */
@@ -365,7 +378,7 @@ static struct key_tracker *tracker_alloc(void) {
             t->resolution      = TRK_UNDECIDED;
             t->has_hold        = false;
             t->ht_configured   = false;
-            t->awaiting_settle = false;
+            t->awaiting_hold_commit = false;
             t->blocked_by_prior_plain = false;
             t->hrkp_positions       = NULL;
             t->hrkp_positions_count = 0;
@@ -374,9 +387,9 @@ static struct key_tracker *tracker_alloc(void) {
                 k_work_init_delayable(&t->tapping_term_timer, tapping_term_handler);
                 t->tapping_term_timer_inited = true;
             }
-            if (!t->settle_timer_inited) {
-                k_work_init_delayable(&t->settle_timer, settle_handler);
-                t->settle_timer_inited = true;
+            if (!t->hold_commit_timer_inited) {
+                k_work_init_delayable(&t->hold_commit_timer, hold_commit_handler);
+                t->hold_commit_timer_inited = true;
             }
             return t;
         }
@@ -391,12 +404,12 @@ static void tracker_free(struct key_tracker *t) {
     if (t->has_hold) {
         k_work_cancel_delayable(&t->tapping_term_timer);
     }
-    if (t->awaiting_settle) {
-        k_work_cancel_delayable(&t->settle_timer);
+    if (t->awaiting_hold_commit) {
+        k_work_cancel_delayable(&t->hold_commit_timer);
     }
     t->in_use          = false;
     t->has_hold        = false;
-    t->awaiting_settle = false;
+    t->awaiting_hold_commit = false;
     t->blocked_by_prior_plain = false;
     t->resolution      = TRK_UNDECIDED;
 }
@@ -445,7 +458,7 @@ static bool ht_accepts_partner(const struct key_tracker *ht,
 }
 
 /** Find an active HT tracker that may use the given partner tracker to drive
- * settle / hold resolution, optionally excluding one tracker. */
+ * hold-commit / hold resolution, optionally excluding one tracker. */
 static struct key_tracker *find_ht_undecided_for_partner(
     const struct key_tracker *partner,
     const struct key_tracker *exclude) {
@@ -808,6 +821,14 @@ void chordis_engine_init(void) {
         DT_PROP(DT_INST(0, zmk_chord_input_config), sequential_threshold);
     timing.sequential_min_overlap_ms =
         DT_PROP(DT_INST(0, zmk_chord_input_config), sequential_min_overlap_ms);
+    timing.default_tapping_term_ms =
+        DT_PROP(DT_INST(0, zmk_chord_input_config), default_tapping_term_ms);
+    timing.default_quick_tap_ms =
+        DT_PROP(DT_INST(0, zmk_chord_input_config), default_quick_tap_ms);
+    timing.default_require_prior_idle_ms =
+        DT_PROP(DT_INST(0, zmk_chord_input_config), default_require_prior_idle_ms);
+    timing.hold_after_partner_release_ms =
+        DT_PROP(DT_INST(0, zmk_chord_input_config), hold_after_partner_release_ms);
 #endif
 
     k_work_init_delayable(&sm.timeout_work, timeout_handler);
@@ -815,9 +836,33 @@ void chordis_engine_init(void) {
     sm.state = CHORDIS_IDLE;
     sm.timer_initialized = true;
 
-    LOG_DBG("nicola engine init: timeout=%d threshold=%d min_overlap=%d",
+    LOG_DBG("nicola engine init: timeout=%d threshold=%d min_overlap=%d "
+            "default_tt=%d default_qt=%d hold_after_partner_release=%d",
             timing.timeout_ms, timing.sequential_threshold,
-            timing.sequential_min_overlap_ms);
+            timing.sequential_min_overlap_ms,
+            timing.default_tapping_term_ms,
+            timing.default_quick_tap_ms,
+            timing.hold_after_partner_release_ms);
+}
+
+void chordis_engine_set_globals(uint32_t default_tapping_term_ms,
+                                uint32_t default_quick_tap_ms,
+                                uint32_t hold_after_partner_release_ms) {
+    if (default_tapping_term_ms != CHORDIS_KEEP) {
+        timing.default_tapping_term_ms = default_tapping_term_ms;
+    }
+    if (default_quick_tap_ms != CHORDIS_KEEP) {
+        timing.default_quick_tap_ms = default_quick_tap_ms;
+    }
+    if (hold_after_partner_release_ms != CHORDIS_KEEP) {
+        timing.hold_after_partner_release_ms = hold_after_partner_release_ms;
+    }
+}
+
+void chordis_engine_set_require_prior_idle_global(uint32_t default_require_prior_idle_ms) {
+    if (default_require_prior_idle_ms != CHORDIS_KEEP) {
+        timing.default_require_prior_idle_ms = default_require_prior_idle_ms;
+    }
 }
 
 /* ── Character key events ─────────────────────────────────── */
@@ -829,28 +874,50 @@ static void tracker_apply_hold(struct key_tracker *t,
                                const struct chordis_hold_config *hold) {
     if (!t || !hold) return;
     t->ht_configured = true;
-    if (hold->quick_tap_ms > 0) {
+    /* Inherit globals when the per-key value is the sentinel 0. */
+    uint32_t tapping_term_ms = hold->tapping_term_ms != 0
+                                   ? hold->tapping_term_ms
+                                   : timing.default_tapping_term_ms;
+    uint32_t quick_tap_ms    = hold->quick_tap_ms != 0
+                                   ? hold->quick_tap_ms
+                                   : timing.default_quick_tap_ms;
+    uint32_t require_prior_idle_ms = hold->require_prior_idle_ms != 0
+                                   ? hold->require_prior_idle_ms
+                                   : timing.default_require_prior_idle_ms;
+    /* require-prior-idle gate: if any key was released within the
+     * configured window before this press, force tap (skip arming the
+     * hold timer). Mirrors hrkp deny semantics — the tracker stays
+     * allocated but loses its hold capability. */
+    if (require_prior_idle_ms > 0 && last_key_release_ts >= 0 &&
+        (t->pressed_ts - last_key_release_ts) < (int64_t)require_prior_idle_ms) {
+        LOG_DBG("require_prior_idle suppress hold pos=%d gap=%lld < %d",
+                t->position,
+                (long long)(t->pressed_ts - last_key_release_ts),
+                require_prior_idle_ms);
+        return;
+    }
+    if (quick_tap_ms > 0) {
         int64_t last_release = quick_tap_lookup(t->position);
         if (last_release >= 0 &&
-            (t->pressed_ts - last_release) < (int64_t)hold->quick_tap_ms) {
+            (t->pressed_ts - last_release) < (int64_t)quick_tap_ms) {
             LOG_DBG("quick_tap suppress hold pos=%d gap=%lld < %d",
                     t->position,
                     (long long)(t->pressed_ts - last_release),
-                    hold->quick_tap_ms);
+                    quick_tap_ms);
             /* Leave has_hold = false (set by tracker_alloc); do not arm timer. */
             return;
         }
     }
     t->has_hold        = true;
-    t->tapping_term_ms = hold->tapping_term_ms;
-    t->quick_tap_ms    = hold->quick_tap_ms;
+    t->tapping_term_ms = tapping_term_ms;
+    t->quick_tap_ms    = quick_tap_ms;
     t->hold_binding    = hold->binding;
     /* Slice G: copy hrkp pointer/count. The pointer references storage owned
      * by the behavior config (lifetime: program), so a raw pointer is safe. */
     t->hrkp_positions       = hold->hold_required_positions;
     t->hrkp_positions_count = hold->hold_required_positions_count;
     t->hrkp_decided         = false;
-    k_work_schedule(&t->tapping_term_timer, K_MSEC(hold->tapping_term_ms));
+    k_work_schedule(&t->tapping_term_timer, K_MSEC(tapping_term_ms));
 }
 
 /** Slice G: hrkp (hold-required-key-positions) gating. Called when a new
@@ -1177,6 +1244,10 @@ void chordis_on_char_pressed(const uint32_t kana[CHORDIS_KANA_SLOTS],
 void chordis_on_char_released(struct zmk_behavior_binding_event event) {
     LOG_DBG("char_released pos=%d state=%d", event.position, sm.state);
 
+    /* Track most recent release for require-prior-idle-ms gating on the
+     * NEXT press. */
+    last_key_release_ts = event.timestamp;
+
     if (sm.char_held_count > 0) sm.char_held_count--;
     char_mark_released(event.position);
 
@@ -1223,10 +1294,11 @@ void chordis_on_char_released(struct zmk_behavior_binding_event event) {
     /* CHAR_WAIT + combo_pending: a combo key was released.
      * Default: resolve immediately — release means "done participating."
      *
-     * Slice D-1 release-gap balanced exception: if releasing a plain
-     * (non-HT) tracker while another tracker is HT-UNDECIDED, we don't
-     * yet know whether this is a combo or a held mod. Schedule a
-     * settle_timer (release_gap_ms); if HT releases within the gap,
+     * Slice D-1 hold-after-partner-release balanced exception: if
+     * releasing a plain (non-HT) tracker while another tracker is
+     * HT-UNDECIDED, we don't yet know whether this is a combo or a held
+     * mod. Schedule a hold_commit_timer (hold_after_partner_release_ms);
+     * if HT releases within the window,
      * combo wins; if not, HT becomes HOLD and the plain is dropped
      * (passthrough placeholder until base-layer binding plumbing). */
     if (sm.state == CHORDIS_CHAR_WAIT && sm.combo_pending &&
@@ -1236,11 +1308,11 @@ void chordis_on_char_released(struct zmk_behavior_binding_event event) {
         struct key_tracker *ht_undecided = find_ht_undecided_for_partner(released_t, released_t);
 
         if (ht_undecided != NULL && !released_t->has_hold) {
-            LOG_DBG("plain release while HT undecided pos=%d → schedule settle %dms",
-                    released_t->position, CHORDIS_RELEASE_GAP_MS);
-            released_t->awaiting_settle = true;
+            LOG_DBG("plain release while HT undecided pos=%d → schedule hold-commit %dms",
+                    released_t->position, timing.hold_after_partner_release_ms);
+            released_t->awaiting_hold_commit = true;
             released_t->released_ts     = event.timestamp;
-            k_work_schedule(&released_t->settle_timer, K_MSEC(CHORDIS_RELEASE_GAP_MS));
+            k_work_schedule(&released_t->hold_commit_timer, K_MSEC(timing.hold_after_partner_release_ms));
             return;
         }
 
@@ -1282,7 +1354,7 @@ void chordis_on_char_released(struct zmk_behavior_binding_event event) {
      * is ambiguous until the HT resolves:
      *   - HT released before tapping_term → both taps → both kana
      *   - HT held past tapping_term → HOLD → plain emits via base layer
-     * Mark the plain as awaiting_settle (no separate timer — tapping_term
+     * Mark the plain as awaiting_hold_commit (no separate timer — tapping_term
      * IS the deadline). Resolution happens in:
      *   (a) tapping_term_handler → flush_plain_trackers_via_base_layer
      *   (b) HT tap-release below → flush deferred plains as kana */
@@ -1290,7 +1362,7 @@ void chordis_on_char_released(struct zmk_behavior_binding_event event) {
         struct key_tracker *rel = tracker_find_by_position(event.position);
         if (rel && !rel->has_hold && find_ht_undecided(rel) != NULL) {
             LOG_DBG("defer plain pos=%d until HT resolves", rel->position);
-            rel->awaiting_settle = true;
+            rel->awaiting_hold_commit = true;
             rel->released_ts     = event.timestamp;
             return;
         }
@@ -1315,8 +1387,8 @@ void chordis_on_char_released(struct zmk_behavior_binding_event event) {
             if (was_ht) {
                 for (int i = 0; i < CHORDIS_MAX_TRACKERS; i++) {
                     struct key_tracker *p = &sm.chars[i];
-                    if (p->in_use && p->awaiting_settle) {
-                        p->awaiting_settle = false;
+                    if (p->in_use && p->awaiting_hold_commit) {
+                        p->awaiting_hold_commit = false;
                         LOG_DBG("deferred plain pos=%d → kana (HT tapped)", p->position);
                         output_kana(p->kana[0], p->pressed_ts);
                         tracker_free(p);
@@ -1437,7 +1509,7 @@ void chordis_on_thumb_pressed(enum chordis_thumb_side side,
              * for a buffered KANA_HI tracker. */
             release_held_trackers(event.timestamp);
             /* Flush all in-use trackers as unshifted kana, oldest first.
-             * tracker_free cancels per-tracker tapping_term/settle timers. */
+             * tracker_free cancels per-tracker tapping_term / hold_commit timers. */
             for (;;) {
                 struct key_tracker *t = tracker_first();
                 if (t == NULL) break;
@@ -1512,6 +1584,9 @@ void chordis_on_thumb_released(enum chordis_thumb_side side,
                               struct zmk_behavior_binding_event event) {
     LOG_DBG("thumb_released side=%d state=%d thumb_used=%d",
             side, sm.state, sm.thumb_used);
+
+    /* Track most recent release for require-prior-idle-ms gating. */
+    last_key_release_ts = event.timestamp;
 
     /* Always drop this thumb from physical tracking, regardless of whether
      * it is the currently-active one. Without this, a non-active thumb
@@ -1859,19 +1934,19 @@ static void tapping_term_handler(struct k_work *work) {
     }
 }
 
-/* Slice D-1/D-2: settle timer fired for an awaiting_settle plain tracker.
+/* Slice D-1/D-2: hold_commit_timer fired for an awaiting_hold_commit plain tracker.
  *
- * The plain combo partner B was released release_gap_ms ago and at least
+ * The plain combo partner B was released hold_after_partner_release_ms ago and at least
  * one HT-UNDECIDED tracker has not been released since. Resolve ALL HT
  * trackers still in TRK_UNDECIDED to HOLD (multi-mod, e.g. Cmd+Shift+B),
  * then emit press+release for the plain key's base-layer binding so that
  * B is delivered as a normal keystroke under the held modifiers.
  */
-static void settle_handler(struct k_work *work) {
+static void hold_commit_handler(struct k_work *work) {
     struct key_tracker *plain = NULL;
     for (int i = 0; i < CHORDIS_MAX_TRACKERS; i++) {
-        if (sm.chars[i].in_use && sm.chars[i].awaiting_settle &&
-            (struct k_work *)&sm.chars[i].settle_timer == work) {
+        if (sm.chars[i].in_use && sm.chars[i].awaiting_hold_commit &&
+            (struct k_work *)&sm.chars[i].hold_commit_timer == work) {
             plain = &sm.chars[i];
             break;
         }
@@ -1879,9 +1954,9 @@ static void settle_handler(struct k_work *work) {
     if (!plain) {
         return;
     }
-    plain->awaiting_settle = false;
+    plain->awaiting_hold_commit = false;
 
-    int64_t hold_ts = plain->released_ts + CHORDIS_RELEASE_GAP_MS;
+    int64_t hold_ts = plain->released_ts + timing.hold_after_partner_release_ms;
     int resolved = 0;
 
     for (int i = 0; i < CHORDIS_MAX_TRACKERS; i++) {
@@ -1889,7 +1964,7 @@ static void settle_handler(struct k_work *work) {
         if (!t->in_use || !t->has_hold || t->resolution != TRK_UNDECIDED) {
             continue;
         }
-        LOG_DBG("settle pos=%d: HT pos=%d → HOLD", plain->position, t->position);
+        LOG_DBG("hold-commit pos=%d: HT pos=%d → HOLD", plain->position, t->position);
         k_work_cancel_delayable(&t->tapping_term_timer);
         t->resolution = TRK_HOLD;
         struct zmk_behavior_binding_event ev = {
@@ -1901,7 +1976,7 @@ static void settle_handler(struct k_work *work) {
     }
 
     if (resolved == 0) {
-        LOG_DBG("settle pos=%d: no HT undecided — drop plain", plain->position);
+        LOG_DBG("hold-commit pos=%d: no HT undecided — drop plain", plain->position);
     } else {
         /* D-1.5: emit the plain key's base-layer binding press+release so the
          * unmodified character is delivered while the resolved HT modifiers
@@ -1917,7 +1992,7 @@ static void settle_handler(struct k_work *work) {
             zmk_behavior_invoke_binding(&base_copy, ev, true);
             zmk_behavior_invoke_binding(&base_copy, ev, false);
         } else {
-            LOG_DBG("settle pos=%d: no base-layer binding for plain", plain->position);
+            LOG_DBG("hold-commit pos=%d: no base-layer binding for plain", plain->position);
         }
     }
 

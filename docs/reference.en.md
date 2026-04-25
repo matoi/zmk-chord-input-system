@@ -231,6 +231,33 @@ Timing options are configured on `&cdis_config`.
 };
 ```
 
+## Hold-Tap Globals
+
+The hold-tap timing properties have global defaults on `&cdis_config`, used when a per-key behavior leaves the value at the inherit sentinel `0`. This avoids repeating the same value across every home-row-mod key.
+
+```dts
+&cdis_config {
+    default-tapping-term-ms        = <180>;
+    default-quick-tap-ms           = <120>;
+    default-require-prior-idle-ms  = <100>;
+    hold-after-partner-release-ms  = <60>;
+};
+```
+
+Resolution order (per knob):
+
+1. Per-key value on the character behavior, if non-zero.
+2. Global default on `&cdis_config`.
+3. Built-in fallback (`default-tapping-term-ms = 200`, `default-quick-tap-ms = 0`, `default-require-prior-idle-ms = 0`, `hold-after-partner-release-ms = 80`).
+
+`hold-after-partner-release-ms` is the window after a plain combo partner is released during which an HT-undecided peer can still flip the press to a combo. Shorter values commit to HOLD faster (HT-friendly); longer values keep the combo capture chance open longer.
+
+`hold-after-partner-release-ms` has no per-key override yet; `tapping-term-ms`, `quick-tap-ms`, and `require-prior-idle-ms` may be overridden per key.
+
+To explicitly disable `quick-tap-ms` on a single key while a non-zero global is active, set the per-key value to `<1>` (any non-zero value bypasses inheritance, and `1` is functionally a no-op for repeat protection).
+
+`require-prior-idle-ms` is rolling-input protection: an HT key pressed less than this many milliseconds after the previous key release is forced to tap. The previous release may be from the same physical key. To explicitly disable it on a single key while a non-zero global is active, set that key's value to `<1>`.
+
 ## Combo Tables
 
 Naginata includes combo tables automatically through its preset include.
